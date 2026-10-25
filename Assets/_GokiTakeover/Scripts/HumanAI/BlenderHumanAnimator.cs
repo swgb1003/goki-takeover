@@ -28,6 +28,23 @@ namespace GokiTakeover
         public Vector3 NozzleWorld => leftHand.TransformPoint(nozzleLocal);
         public void ConfigureLance(Vector3 tipInLeftHand) { nozzleLocal = tipInLeftHand; }
         private float aim;
+        // Stage 2 daily life (HouseholdLife): a pose held at an activity, blended in and out. Seated poses put the hips on
+        // SeatPoint (the person stands beside the chair on the NavMesh) with the feet on the floor; the hands work at
+        // HandPoint (the worktop, desk, table or bed); the head watches LookPoint. HeldProp (the newspaper, the game pad)
+        // is shown between the hands while reading or playing. None: the walk pose only (every other scene).
+        public enum LifePose{None,Sit,Read,Desk,Eat,Doze,Floor,Cook,Wash,Fold}
+        public LifePose Pose{get;set;}
+        public Vector3 SeatPoint{get;set;}
+        public Vector3 HandPoint{get;set;}
+        public Vector3 LookPoint{get;set;}
+        public Transform HeldProp{get;set;}
+        public LifePose ShownPose=>shownPose;
+        public float PoseWeight=>poseWeight;
+        public float HipHeight=>hipHeight;
+        public Vector3 LeftHandWorld=>leftHand.position;
+        public Vector3 RightHandWorld=>rightHand.position;
+        public Vector3 PelvisWorld=>pelvis.position;
+        private LifePose shownPose;private float poseWeight,hipHeight;private Transform shownProp;
         public Vector3 TreadCentreWorld => weapon.TransformPoint(TreadCentre);
         public Vector3 TreadNormalWorld => -weapon.right;
         public void Configure(HumanAIController ai, Transform[] bones, Transform originalWeapon)
@@ -48,11 +65,13 @@ namespace GokiTakeover
             footRestL=transform.InverseTransformPoint(leftFoot.position);footRestR=transform.InverseTransformPoint(rightFoot.position);
             posed=new[]{spine,chest,neck,head,leftThigh,rightThigh,leftShin,rightShin,leftFoot,rightFoot,leftArm,rightArm,leftForearm,rightForearm,leftHand,rightHand,weapon,pelvis};
             walkRotation=new Quaternion[posed.Length];
+            hipHeight=human?pelvis.position.y-human.transform.position.y:2;
         }
         private void LateUpdate()
         {
             if(!human || posed==null || Time.deltaTime<=0)return;
             Walk();
+            Life(Time.deltaTime);
             aim=Mathf.MoveTowards(aim,Mathf.Clamp01(SprayAim),Time.deltaTime*(SprayAim>aim?3.2f:2.2f));
             bool attacking=human.State==HumanAIController.HumanState.Attack;
             if(attacking)lastAttackTime=human.AttackTime;
@@ -82,6 +101,72 @@ namespace GokiTakeover
             leftHand.rotation=Quaternion.Slerp(leftHand.rotation,Quaternion.FromToRotation(lance,want)*leftHand.rotation,w);
             Vector3 look=SprayPoint-head.position;
             if(look.sqrMagnitude>1e-3f)head.rotation=Quaternion.Slerp(head.rotation,Quaternion.LookRotation(look,chest.up),.7f*w);
+        }
+        private void Life(float dt)
+        {
+            if(Pose!=shownPose){poseWeight=Mathf.MoveTowards(poseWeight,0,dt*3.2f);if(poseWeight<=0)shownPose=Pose;}
+            else poseWeight=Mathf.MoveTowards(poseWeight,shownPose==LifePose.None?0:1,dt*2.2f);
+            if(shownProp&&shownProp!=HeldProp)shownProp.gameObject.SetActive(false);
+            shownProp=HeldProp;
+            bool holding=poseWeight>.55f&&(shownPose==LifePose.Read||shownPose==LifePose.Floor);
+            if(HeldProp&&HeldProp.gameObject.activeSelf!=holding)HeldProp.gameObject.SetActive(holding);
+            if(poseWeight<=0||shownPose==LifePose.None)return;
+            for(int i=0;i<posed.Length;i++)walkRotation[i]=posed[i].localRotation;
+            Vector3 walkPelvis=pelvis.localPosition;
+            Hold(shownPose,Time.time);
+            float w=Smooth(0,1,poseWeight);
+            for(int i=0;i<posed.Length;i++)posed[i].localRotation=Quaternion.Slerp(walkRotation[i],posed[i].localRotation,w);
+            pelvis.localPosition=Vector3.Lerp(walkPelvis,pelvis.localPosition,w);
+            if(holding&&HeldProp)HeldProp.SetPositionAndRotation((leftHand.position+rightHand.position)*.5f+human.transform.forward*.05f,Quaternion.LookRotation(human.transform.forward,Vector3.up));
+        }
+        // The activity pose at full weight, solved in world space from the person's facing.
+        private void Hold(LifePose p,float t)
+        {
+            Transform body=human.transform;Vector3 up=Vector3.up,fw=body.forward,side=body.right;
+            float thigh=Vector3.Distance(leftThigh.position,leftShin.position),shin=Vector3.Distance(leftShin.position,leftFoot.position);
+            float k=(thigh+shin)/1.9f, ankle=Mathf.Max(.04f,transform.TransformPoint(footRestL).y-body.position.y);
+            bool seated=p==LifePose.Sit||p==LifePose.Read||p==LifePose.Desk||p==LifePose.Eat||p==LifePose.Doze||p==LifePose.Floor;
+            Vector3 hips=pelvis.position;
+            if(seated){hips=SeatPoint+up*(thigh+shin)*.07f;pelvis.position=hips;}
+            float lean=p==LifePose.Desk?18:p==LifePose.Eat?8:p==LifePose.Doze?-10:p==LifePose.Sit?-5:p==LifePose.Floor?8:p==LifePose.Cook?10:p==LifePose.Wash?16:p==LifePose.Fold?30:0;
+            spine.rotation=Quaternion.AngleAxis(lean*.5f,side)*spine.rotation;
+            chest.rotation=Quaternion.AngleAxis(lean*.5f+(p==LifePose.Doze?Mathf.Sin(t*1.4f)*1.5f:0),side)*chest.rotation;
+            // Legs: knees forward and feet on the floor in front of the seat; cross-legged on the floor.
+            if(seated)
+                for(int s=-1;s<=1;s+=2)
+                {
+                    Transform th=s<0?leftThigh:rightThigh,sh=s<0?leftShin:rightShin,ft=s<0?leftFoot:rightFoot;
+                    Vector3 foot,pole;
+                    if(p==LifePose.Floor){foot=hips+fw*thigh*.55f-side*s*thigh*.35f;pole=fw*.4f+side*s+up*.8f;}
+                    else
+                    {
+                        // Knees over the front edge; on a seat too high for the legs (the sofa) the thighs lie along it.
+                        float reach=p==LifePose.Doze?thigh*1.05f+shin*.35f:hips.y-(thigh+shin)*.92f>body.position.y+ankle?thigh+shin*.25f:thigh*.92f;
+                        foot=hips+fw*reach+side*s*.24f*k;pole=fw+up*.3f;
+                    }
+                    foot.y=Mathf.Max(body.position.y+ankle,hips.y-(thigh+shin)*.92f);   // the feet dangle from a seat too high for the legs (the sofa)
+                    TwoBone(th,sh,ft,foot,pole);
+                    ft.rotation=body.rotation;
+                }
+            // Arms: on the lap, holding the paper or the pad, working on the surface in front.
+            Vector3 lh,rh;
+            switch(p)
+            {
+                case LifePose.Read:{Vector3 c=chest.position+fw*.55f*k+up*.02f*k;lh=c-side*.3f*k;rh=c+side*.3f*k;break;}
+                case LifePose.Desk:lh=HandPoint-side*.28f*k;rh=HandPoint+side*.18f*k+(fw*Mathf.Sin(t*5)+side*Mathf.Cos(t*5))*.05f*k;break;
+                case LifePose.Eat:{float bite=Mathf.Clamp01(Mathf.Sin(t*2.1f)*2-.6f);lh=HandPoint-side*.3f*k;rh=Vector3.Lerp(HandPoint+side*.25f*k,head.position+fw*.22f*k-up*.12f*k,bite);break;}
+                case LifePose.Floor:{Vector3 pad=chest.position+fw*.42f*k-up*.38f*k;lh=pad-side*.1f*k+up*Mathf.Sin(t*13)*.012f*k;rh=pad+side*.1f*k+up*Mathf.Sin(t*11+1)*.012f*k;break;}
+                case LifePose.Cook:lh=HandPoint-side*.42f*k;rh=HandPoint+side*.05f*k+(fw*Mathf.Sin(t*3.2f)+side*Mathf.Cos(t*3.2f))*.12f*k;break;
+                case LifePose.Wash:{float scrub=Mathf.Sin(t*6)*.08f*k;lh=HandPoint-side*.2f*k+fw*scrub;rh=HandPoint+side*.2f*k-fw*scrub;break;}
+                case LifePose.Fold:{float f=Mathf.Sin(t*1.7f);Vector3 lift=up*Mathf.Max(0,f)*.15f*k;lh=HandPoint-side*(.25f+.2f*f)*k+lift;rh=HandPoint+side*(.25f+.2f*f)*k+lift;break;}
+                default:lh=Vector3.Lerp(hips,leftShin.position,.55f)+up*.12f*k;rh=Vector3.Lerp(hips,rightShin.position,.55f)+up*.12f*k;break;   // Sit, Doze: hands on the lap
+            }
+            TwoBone(leftArm,leftForearm,leftHand,lh,-up*.6f-fw*.2f-side*.5f);
+            TwoBone(rightArm,rightForearm,rightHand,rh,-up*.6f-fw*.2f+side*.5f);
+            // Head: nodding off, else watching the TV, the pan, the paper.
+            if(p==LifePose.Doze){head.rotation=Quaternion.AngleAxis(32,side)*Quaternion.AngleAxis(16,fw)*head.rotation;return;}
+            Vector3 look=(p==LifePose.Read||p==LifePose.Floor&&LookPoint.sqrMagnitude<1e-4f?(leftHand.position+rightHand.position)*.5f:LookPoint)-head.position;
+            if(look.sqrMagnitude>1e-3f)head.rotation=Quaternion.Slerp(head.rotation,Quaternion.LookRotation(look,chest.up),.7f);
         }
         private void Walk()
         {

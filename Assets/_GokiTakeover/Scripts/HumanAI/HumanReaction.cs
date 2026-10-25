@@ -49,6 +49,11 @@ namespace GokiTakeover
         public float StageDetectionScale { get; set; } = 1f;
         public float StageSpeedScale { get; set; } = 1f;
         public Rect HeatArea { get; set; } = new Rect(-7, -6, 14, 12);
+        // Stage 2: after this long without a sighting (fear low, nobody hunting) 「警戒」 calms back to 「発見」 and the
+        // family's daily life returns; sightings count again from there. 0: alertness stays for good (Stage 1 and before).
+        public float CalmAfterSeconds { get; set; }
+        public int Calmed { get; private set; }
+        private int alertBase;
         public string Bubble { get; private set; }
         public bool BubbleVisible => Time.time < bubbleUntil && !string.IsNullOrEmpty(Bubble);
         public InsecticideSpray Spray => spray;
@@ -73,6 +78,7 @@ namespace GokiTakeover
         public void ResetReaction()
         {
             Fear = FearGained = 0; CurrentLevel = HighestLevel = Level.Peace;
+            alertBase = 0; Calmed = 0;
             Array.Clear(heat, 0, heat.Length);
             lastDiscoveries = session.Discoveries;
             sensorClock = trapClock = identifyClock = 0;
@@ -134,8 +140,8 @@ namespace GokiTakeover
                     var h = session.HumanAt(i);
                     if (h.State == HumanAIController.HumanState.Attack || h == human && human.Suspended && CurrentAction >= Activity.SprayWindup) continue;
                     Vector3 delta = ally.Position - h.transform.position; delta.y = 0;
-                    if (delta.sqrMagnitude > s.sightDistance * s.sightDistance || Vector3.Angle(h.transform.forward, delta) > s.sightAngle * 0.5f) continue;
-                    if (Physics.Linecast(h.transform.position + Vector3.up * h.EyeHeight, ally.Position + Vector3.up * 0.2f, ~(1 << 2), QueryTriggerInteraction.Ignore)) continue;
+                    if (delta.sqrMagnitude > h.SightRange * h.SightRange || Vector3.Angle(h.transform.forward, delta) > h.SightAngle * 0.5f) continue;
+                    if (Physics.Linecast(h.Eye, ally.Position + Vector3.up * 0.2f, ~(1 << 2), QueryTriggerInteraction.Ignore)) continue;
                     VisibleAllies++;
                     RecordSighting(ally.Position, 0.5f);
                     break;
@@ -167,9 +173,12 @@ namespace GokiTakeover
             Level next = CurrentLevel;
             int seen = session.Discoveries;
             if (next == Level.Peace && (seen >= 1 || Fear >= 15)) next = Level.Noticed;
-            if (next == Level.Noticed && (seen >= settings.alertDiscoveries || Fear >= settings.alertFear)) next = Level.Alert;
+            if (next == Level.Noticed && (seen - alertBase >= settings.alertDiscoveries || Fear >= settings.alertFear)) next = Level.Alert;
             if (next == Level.Alert && Fear >= settings.panicFear) next = Level.Panic;
             if (next == Level.Panic && Fear < settings.calmFear) next = Level.Alert;   // panic subsides; alertness stays
+            bool calming = CalmAfterSeconds > 0 && next == Level.Alert && CurrentLevel == Level.Alert && CurrentAction == Activity.None
+                && Fear < settings.alertFear * 0.5f && Time.time - lastSightingAt >= CalmAfterSeconds && !AnyoneHunting();
+            if (calming) { next = Level.Noticed; alertBase = seen; Calmed++; Say("気のせいだったかな…"); }
             if (next == CurrentLevel) return;
             bool rising = next > CurrentLevel;
             CurrentLevel = next;
@@ -177,6 +186,17 @@ namespace GokiTakeover
             ApplyLevel();
             if (rising) Say(next == Level.Noticed ? "今、何か動いた…？" : next == Level.Alert ? "またか…罠を置いておこう" : "もう無理！ スプレー持ってくる！");
             LevelChanged?.Invoke(next);
+        }
+
+#if UNITY_EDITOR || DEVELOPMENT_BUILD
+        /// <summary>Verification: as if nothing had been seen for this long.</summary>
+        public void DebugQuiet(float seconds) { lastSightingAt = Time.time - seconds; }
+#endif
+        private bool AnyoneHunting()
+        {
+            for (int i = 0; i < session.HumanCount; i++)
+                if (session.HumanPresent(i) && session.HumanAt(i).State != HumanAIController.HumanState.Routine) return true;
+            return false;
         }
 
         private static readonly float[] SpeedByLevel = { 1f, 1.1f, 1.15f, 1.25f };

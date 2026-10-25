@@ -13,6 +13,19 @@ namespace GokiTakeover
         Vector3 PreyVelocity(int index);
     }
 
+    /// <summary>
+    /// Stage 2 daily life (HouseholdLife): while it leads, the calm routine walks to an activity instead of the patrol,
+    /// and a busy person sees a narrower, shorter cone from where their eyes really are (seated, on the floor).
+    /// </summary>
+    public interface IDailyLife
+    {
+        bool Leads { get; }
+        Vector3 Destination { get; }
+        float SightAngleScale { get; }
+        float SightRangeScale { get; }
+        Vector3 EyeShift { get; }
+    }
+
     [RequireComponent(typeof(NavMeshAgent))]
     public sealed class HumanAIController : MonoBehaviour
     {
@@ -87,6 +100,12 @@ namespace GokiTakeover
         private static readonly float[] WanderTurns = { 55, -70, 35, -45, 95, -100, 20, -25 };
         private int wanderStep;
         public NavMeshAgent Agent => agent;
+        // Null: no daily life (every scene before Stage 2's family); the sight and the routine are unchanged.
+        public IDailyLife Life { get; set; }
+        private bool Living => Life != null && State == HumanState.Routine && Life.Leads;
+        public float SightAngle => Settings.sightAngle * (Living ? Life.SightAngleScale : 1);
+        public float SightRange => Settings.sightDistance * (Living ? Life.SightRangeScale : 1);
+        public Vector3 Eye => transform.position + Vector3.up * eyeHeight + (Living ? Life.EyeShift : Vector3.zero);
         public void Configure(PhaseTwoSession game, Transform[] route, Transform telegraph, Transform weapon, Transform left, Transform right)
         { session = game; patrolPoints = route; warning = telegraph; slipper = weapon; leftLeg = left; rightLeg = right; }
         private void Awake()
@@ -108,7 +127,7 @@ namespace GokiTakeover
         public bool HasLineOfSight()
         {
             if (session.InSafeNest) return false;
-            Vector3 eye = transform.position + Vector3.up * eyeHeight;
+            Vector3 eye = Eye;
             Vector3 target = session.Player.position + Vector3.up * 0.15f;
             // Low furniture is a readable hiding place even when its open side permits a diagonal ray.
             // Only on the floor: a roach high on a wall or on the worktop would otherwise count the ceiling as cover.
@@ -119,17 +138,17 @@ namespace GokiTakeover
         public bool SensePlayer()
         {
             Vector3 delta = Vector3.ProjectOnPlane(session.Player.position - transform.position, Vector3.up);
-            return delta.sqrMagnitude < Settings.sightDistance * Settings.sightDistance &&
-                Vector3.Angle(transform.forward, delta) < Settings.sightAngle * 0.5f && HasLineOfSight();
+            return delta.sqrMagnitude < SightRange * SightRange &&
+                Vector3.Angle(transform.forward, delta) < SightAngle * 0.5f && HasLineOfSight();
         }
         // Same cone and cover rules as the player on the floor: furniture overhead hides an ally too.
         public bool SensePrey(Vector3 position)
         {
             Vector3 delta = Vector3.ProjectOnPlane(position - transform.position, Vector3.up);
-            if (delta.sqrMagnitude >= Settings.sightDistance * Settings.sightDistance || Vector3.Angle(transform.forward, delta) >= Settings.sightAngle * 0.5f) return false;
+            if (delta.sqrMagnitude >= SightRange * SightRange || Vector3.Angle(transform.forward, delta) >= SightAngle * 0.5f) return false;
             Vector3 target = position + Vector3.up * 0.15f;
             if (Physics.Raycast(target, Vector3.up, out RaycastHit roof, 3.3f, ~(1 << 2), QueryTriggerInteraction.Ignore) && !session.IsHumanBody(roof.transform)) return false;
-            return !Physics.Linecast(transform.position + Vector3.up * eyeHeight, target, ~(1 << 2), QueryTriggerInteraction.Ignore);
+            return !Physics.Linecast(Eye, target, ~(1 << 2), QueryTriggerInteraction.Ignore);
         }
         private bool SelectTarget()
         {
@@ -279,6 +298,7 @@ namespace GokiTakeover
             agent.speed = (State == HumanState.Chase ? Settings.chaseSpeed : State == HumanState.Search && SearchWander ? (Settings.patrolSpeed + Settings.chaseSpeed) * 0.5f : Settings.patrolSpeed) * SpeedScale * speedFactor;
             if (State == HumanState.Routine)
             {
+                if (Living) { SetDestination(Life.Destination); return; }
                 if (patrolPoints.Length == 0) return;
                 if (!agent.pathPending && agent.hasPath && agent.remainingDistance < 0.35f) waypoint = NextWaypoint();
                 SetDestination(patrolPoints[waypoint].position);

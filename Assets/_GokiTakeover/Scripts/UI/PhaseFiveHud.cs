@@ -145,6 +145,11 @@ namespace GokiTakeover
             var napper = Pet;
             if (napper && napper.Current == PetCat.Phase.Nap && Vector3.Distance(napper.transform.position, session.Player.position) < 9)
                 Marker(napper.transform.position + Vector3.up * 1.1f, "Zzz", Muted, false, null, 0.8f);
+            var house = Life;
+            if (house)
+                for (int i = 0; i < house.MemberCount && i < session.HumanCount; i++)
+                    if (session.HumanPresent(i) && house.Dozing(i) && Vector3.Distance(session.HumanAt(i).transform.position, session.Player.position) < 12)
+                        Marker(house.Current(i).seat + Vector3.up * 2.4f, "Zzz", Muted, false, null, 0.8f);   // over the head on the sofa
             var cage = Cage;
             if (cage && cage.Count > 0 && Vector3.Distance(cage.transform.position, session.Player.position) < 14)
                 Marker(cage.transform.position + Vector3.up * 1.6f, "◇ 虫かご  仲間 " + cage.Count + "匹", Lime, false);
@@ -200,6 +205,7 @@ namespace GokiTakeover
             else if (watcher.State == HumanAIController.HumanState.Chase)
                 Banner(watcher.TargetIsPlayer ? (Household ? watcher.Label + "に見つかった！  家具の下か壁の上へ" : "見つかった！  家具の下か壁の上へ逃げよう")
                     : Household ? "仲間が見つかった！  " + watcher.Label + "が追いかけている" : "仲間が見つかった！  人間が追いかけている", 366, Orange);
+            else if (StartledNearby) Banner("物音に気づかれた！  止まるか物陰へ", 366, Orange);
             SpeechBubble();
             if (Guiding) { GuideTargets(Camera.main); GuidePanel(GuideNormal, tutorial.Current, true); }
             if (Cursor.lockState != CursorLockMode.Locked) Banner("クリックして操作を再開", 416, Lime);
@@ -596,7 +602,8 @@ namespace GokiTakeover
         {
             "父のスリッパ  ―  橙の枠から逃げる。台・低い壁も届く", "母の掃除機  ―  橙の扇に吸い込まれる。横へ逃げる",
             "息子の虫取り網  ―  捕まったら Space 連打。仲間は虫かごへ", "罠・毒餌・スプレー  ―  父が警戒・パニックで使う",
-            "飼い猫  ―  動くものに飛びかかる。止まればやり過ごせる", "燻煙剤  ―  最終防衛。家族は避難、業者が来る"
+            "飼い猫  ―  動くものに飛びかかる。止まればやり過ごせる", "家族の生活  ―  落ち着いていれば生活中。走ると気づく",
+            "燻煙剤  ―  最終防衛。家族は避難、業者が来る"
         };
         private void Briefing()
         {
@@ -622,7 +629,7 @@ namespace GokiTakeover
             Panel(right, Orange);
             GUI.Label(new Rect(816, 64, 300, 30), "危険", big);
             var dangers = Household ? HouseDangers : Dangers;
-            float step = dangers.Length > 5 ? 38 : 46;
+            float step = dangers.Length > 6 ? 34 : dangers.Length > 5 ? 38 : 46;
             for (int i = 0; i < dangers.Length; i++)
             {
                 Fill(new Rect(816, 110 + i * step, 6, 6), Orange);
@@ -1020,9 +1027,10 @@ namespace GokiTakeover
             if (reaction.CurrentAction == HumanReaction.Activity.Walking || reaction.CurrentAction == HumanReaction.Activity.Placing) return "罠を設置中";
             return StateText(session.Human);
         }
-        private static string StateText(HumanAIController h)
+        private string StateText(HumanAIController h)
         {
             var state = h.State;
+            if (state == HumanAIController.HumanState.Routine) { string doing = LifeText(h); if (doing != null) return doing; }
             return state == HumanAIController.HumanState.Routine ? "巡回中" : state == HumanAIController.HumanState.Chase ? "追跡中！" : state == HumanAIController.HumanState.Search ? "捜索中" : "攻撃予兆！";
         }
         // ---- Stage 2 household ----
@@ -1049,6 +1057,28 @@ namespace GokiTakeover
         private BugCage Cage { get { var net = Net; return net ? net.Cage : null; } }
         private PetCat pet;
         private bool petLooked;
+        // Stage 2 daily life: what each member is doing while the house is calm (null: patrolling).
+        private HouseholdLife life;
+        private bool lifeLooked;
+        private HouseholdLife Life { get { if (!lifeLooked) { lifeLooked = true; life = FindFirstObjectByType<HouseholdLife>(); } return life; } }
+        private int MemberIndex(HumanAIController h) { for (int i = 0; i < session.HumanCount; i++) if (session.HumanAt(i) == h) return i; return -1; }
+        private string LifeText(HumanAIController h)
+        {
+            var l = Life; int i = MemberIndex(h);
+            return l && i >= 0 && i < l.MemberCount ? l.Label(i) : null;
+        }
+        // A busy member who heard the player run close by and turned round.
+        private bool StartledNearby
+        {
+            get
+            {
+                var l = Life;
+                if (!l) return false;
+                for (int i = 0; i < l.MemberCount && i < session.HumanCount; i++)
+                    if (session.HumanPresent(i) && l.Startled(i) && Vector3.Distance(session.HumanAt(i).transform.position, session.Player.position) < 6) return true;
+                return false;
+            }
+        }
         private PetCat Pet { get { if (!petLooked) { petLooked = true; pet = FindFirstObjectByType<PetCat>(); } return pet; } }
         // The mother's vacuum and the son's net outrank the other warnings: they are the ones to dodge right now.
         private bool FamilyBanner()

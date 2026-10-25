@@ -18,8 +18,10 @@ namespace GokiTakeover.Editor
     /// slipper, traps, spray; he calls the exterminator), the mother (new model: slipper and a vacuum that sucks roaches
     /// in) and the son (new model, scaled down: a bug net that holds the player and cages allies). Six zones across both
     /// rooms, more food, a bigger floor grid and human NavMesh. Stage 1 and its assets are not modified.
+    /// Later the same day: a bedroom and the son's room behind them (four rooms, eight zones) and the family's daily
+    /// life (StageTwoLifeGenerator.cs: the rooms, the activity spots, HouseholdLife).
     /// </summary>
-    public static class StageTwoGenerator
+    public static partial class StageTwoGenerator
     {
         public const string ScenePath = GeneratedAssets.Root + "/Scenes/Phase5_Stage02_House.unity";
         public const string GridPath = GeneratedAssets.Root + "/Data/Stage02AllyGrid.asset";
@@ -30,13 +32,14 @@ namespace GokiTakeover.Editor
         // The living room: x 7.24 .. 21.24 (the kitchen's right wall is shared), z -6 .. 6, same ceiling.
         public const float LivingMinX = 7.24f, LivingMaxX = 21.24f, DoorZMin = -5.0f, DoorZMax = -2.0f, DoorHeight = 4.4f;
         public static readonly Vector3 GridOrigin = new Vector3(-7, 0, -6);
-        public const int GridWidth = 114, GridDepth = 48;
+        public const int GridWidth = 114, GridDepth = 90;   // x -7 .. 21.5, z -6 .. 16.5 (all four rooms)
         public static readonly Vector3 ExitPoint = new Vector3(20.5f, 0, -0.9f);
         public static readonly Vector3 CagePosition = new Vector3(19.6f, 0, -1.6f);
-        public static readonly string[] ZoneNames = { "テーブルの下", "冷蔵庫の前", "流し台の前", "ソファの下", "テレビの前", "おもちゃ箱のそば" };
+        public static readonly string[] ZoneNames = { "テーブルの下", "冷蔵庫の前", "流し台の前", "ソファの下", "テレビの前", "おもちゃ箱のそば", "ベッドの下", "勉強机の下" };
         public static readonly Vector3[] ZoneCentres = { new Vector3(-2.3f, 0, -0.9f), new Vector3(-3.9f, 0, 2.7f), new Vector3(-0.9f, 0, 3.0f),
-            new Vector3(15.5f, 0, 4.45f), new Vector3(15.5f, 0, -3.0f), new Vector3(18.2f, 0, -2.4f) };
-        public static readonly float[] ZoneRadii = { 1.5f, 1.5f, 1.5f, 1.5f, 1.5f, 1.3f };
+            new Vector3(15.5f, 0, 4.45f), new Vector3(15.5f, 0, -3.0f), new Vector3(18.2f, 0, -2.4f), new Vector3(-1.0f, 0, 12.6f), new Vector3(12.0f, 0, 15.0f) };
+        public static readonly float[] ZoneRadii = { 1.5f, 1.5f, 1.5f, 1.5f, 1.5f, 1.3f, 1.5f, 1.3f };
+        public static readonly Rect HouseArea = new Rect(-7, -6, 28.4f, 22.4f);
         // New food in the living room: kind, position (high ones are reached by climbing), known from the start.
         private static readonly (FoodValue.Kind kind, Vector3 at, bool known)[] LivingFoods =
         {
@@ -110,7 +113,10 @@ namespace GokiTakeover.Editor
             var living = GeneratedAssets.Empty("LivingRoom", room, Vector3.zero);
             var renderers = BuildRooms(room, living);
             Furnish(living);
-            foreach (var t in living.GetComponentsInChildren<Transform>(true)) t.gameObject.isStatic = true;
+            var north = BuildNorthRooms(room);   // the bedroom and the son's room
+            renderers = (renderers.front.Concat(north.hide).ToArray(), renderers.ceiling.Concat(north.ceiling).ToArray());
+            foreach (var root in new[] { living, north.bedroom, north.kids })
+                foreach (var t in root.GetComponentsInChildren<Transform>(true)) t.gameObject.isStatic = true;
 
             // ---- Navigation: the human NavMesh and the allies' floor grid over both rooms ----
             Physics.SyncTransforms();
@@ -124,17 +130,22 @@ namespace GokiTakeover.Editor
             var cLink = new SerializedObject(commander);
             var knownProp = cLink.FindProperty("knownAtStart");
             var known = Enumerable.Range(0, knownProp.arraySize).Select(i => knownProp.GetArrayElementAtIndex(i).boolValue).ToList();
-            foreach (var (kind, at, isKnown) in LivingFoods)
+            FoodItem AddFood(FoodValue.Kind kind, Vector3 at, bool isKnown, string prefix)
             {
                 var template = foods.First(f => f.GetComponent<FoodValue>() && f.GetComponent<FoodValue>().FoodKind == kind);
                 var copy = UnityEngine.Object.Instantiate(template.gameObject, template.transform.parent);
-                copy.name = "FoodMarker_House_" + foods.Count;
+                copy.name = prefix + foods.Count;
                 copy.transform.SetPositionAndRotation(at, Quaternion.Euler(0, 30 + foods.Count * 53, 0));
                 foods.Add(copy.GetComponent<FoodItem>());
                 known.Add(isKnown);
+                return foods[foods.Count - 1];
             }
+            foreach (var (kind, at, isKnown) in LivingFoods.Concat(NorthFoods)) AddFood(kind, at, isKnown, "FoodMarker_House_");
+            // Hidden until the family drops them: crumbs while the mother cooks, leftovers after dinner.
+            var crumbFoods = LifeCrumbs.Select(c => AddFood(c.kind, c.at, false, "FoodMarker_Life_")).ToArray();
+            var leftoverFoods = LifeLeftovers.Select(c => AddFood(c.kind, c.at, false, "FoodMarker_Life_")).ToArray();
             var scouts = new List<Vector3>(commander.ScoutPoints);
-            foreach (var p in LivingScouts)
+            foreach (var p in LivingScouts.Concat(NorthScouts))
             {
                 Vector3 q = p;
                 if (!grid.Walkable(q) && !grid.NearestWalkable(q, 1.5f, out q)) throw new InvalidOperationException("リビングの調査地点に到達できません: " + p);
@@ -155,27 +166,27 @@ namespace GokiTakeover.Editor
             iLink.ApplyModifiedPropertiesWithoutUndo();
             var colLink = new SerializedObject(colony);
             var spots = colLink.FindProperty("respawnSpots");
-            foreach (var p in LivingRespawns)
+            foreach (var p in LivingRespawns.Concat(NorthRespawns))
             {
                 spots.arraySize++;
                 spots.GetArrayElementAtIndex(spots.arraySize - 1).vector3Value = p;
             }
             colLink.ApplyModifiedPropertiesWithoutUndo();
             var overview = UnityEngine.Object.FindFirstObjectByType<SwarmViewCamera>(FindObjectsInactive.Include);
-            overview.Configure(new Vector2(-6.4f, -5.4f), new Vector2(20.6f, 5.4f), commander.Settings3.swarmDistance + 2, commander.Settings3.swarmPanSpeed * 1.4f);
+            overview.Configure(new Vector2(-6.4f, -5.4f), new Vector2(20.6f, 15.6f), commander.Settings3.swarmDistance + 2, commander.Settings3.swarmPanSpeed * 1.6f);
             EditorUtility.SetDirty(overview);
 
             // ---- The household ----
             var father = session.Human;
             father.ConfigureMember("父", true, 3.5f, 1f);
             EditorUtility.SetDirty(father);
-            SetPatrol(father, KitchenStops.Concat(LivingStops).ToArray(), "PatrolPoint_");
+            SetPatrol(father, KitchenStops.Concat(LivingStops).Concat(BedroomStops).ToArray(), "PatrolPoint_");
             var mother = CopyMember(father, "Human_Mother", new Vector3(10.8f, 0, 0.6f), 180, "Mother", 1f);
             var son = CopyMember(father, "Human_Son", new Vector3(18.2f, 0, 0.2f), 250, "Son", 0.72f);
             mother.ConfigureMember("母", true, 3.5f, 1.05f);
             son.ConfigureMember("息子", false, 2.55f, 1.25f);
-            SetPatrol(mother, KitchenStops.Take(6).Concat(LivingStops.Take(4)).ToArray(), "MotherStop_");
-            SetPatrol(son, LivingStops.Concat(new[] { new Vector3(4.0f, 0, -3.0f), new Vector3(1.0f, 0, 2.6f) }).ToArray(), "SonStop_");
+            SetPatrol(mother, KitchenStops.Take(6).Concat(LivingStops.Take(4)).Concat(BedroomStops.Take(2)).ToArray(), "MotherStop_");
+            SetPatrol(son, LivingStops.Concat(KidStops).Concat(new[] { new Vector3(4.0f, 0, -3.0f), new Vector3(1.0f, 0, 2.6f) }).ToArray(), "SonStop_");
             session.ConfigureFamily(new[] { mother, son });
             EditorUtility.SetDirty(session);
 
@@ -220,6 +231,9 @@ namespace GokiTakeover.Editor
             var cat = catRoot.gameObject.AddComponent<PetCat>();
             catBody.Configure(cat, catSkin.bones);
             cat.Configure(session, commander, progress, catGrid, catBody, catRing, catFill, catSkin.root.transform, CatBed);
+            var catLink = new SerializedObject(cat);
+            catLink.FindProperty("area").rectValue = new Rect(-6.5f, -5.5f, 27.5f, 21.5f);   // all four rooms
+            catLink.ApplyModifiedPropertiesWithoutUndo();
 
             // ---- Exit door to the hall (the family evacuates and the father leaves by it) ----
             var door = GeneratedAssets.Material("Phase5_Door", new Color(0.34f, 0.21f, 0.12f));
@@ -239,6 +253,9 @@ namespace GokiTakeover.Editor
             SetArray(pLink.FindProperty("flags"), flags.Cast<UnityEngine.Object>().ToArray());
             pLink.ApplyModifiedPropertiesWithoutUndo();
 
+            // ---- Daily life: what the family does while the house is calm ----
+            BuildLife(stageRoot, session, progress, colony, father, mother, son, crumbFoods, leftoverFoods);
+
             EditorSceneManager.SaveScene(scene, ScenePath);
             GeneratedAssets.Mark(AssetDatabase.LoadAssetAtPath<SceneAsset>(ScenePath));
             Debug.Log("[GOKI STAGE2] 一軒家を生成: " + ScenePath);
@@ -248,9 +265,20 @@ namespace GokiTakeover.Editor
         /// <summary>Stage 2 numbers, harder than Stage 1 on every gauge. Written once (when it was still a placeholder).</summary>
         public static void FillDefinition(StageDefinition stage)
         {
-            if (stage.playable && stage.zones.Length > 0) return;   // already set up: keep any tuning
+            if (stage.playable && stage.zones.Length > 0)
+            {
+                // Already set up: keep any tuning. Once, when the bedroom and the son's room were added (2026-10-25):
+                // their two zones, the heat map over the whole house and the household calming down again.
+                if (stage.zones.Length >= ZoneNames.Length) return;
+                stage.zones = stage.zones.Concat(Enumerable.Range(stage.zones.Length, ZoneNames.Length - stage.zones.Length)
+                    .Select(i => new StageDefinition.Zone { name = ZoneNames[i], centre = ZoneCentres[i], radius = ZoneRadii[i] })).ToArray();
+                stage.heatArea = HouseArea; stage.calmSeconds = 60;
+                stage.description = Description;
+                EditorUtility.SetDirty(stage);
+                return;
+            }
             stage.id = "stage02"; stage.title = "一軒家"; stage.subtitle = "家族と猫の住む一軒家（父・母・息子・ミケ）"; stage.difficulty = 3; stage.residents = 3;
-            stage.description = "父・母・息子と猫が暮らす一軒家。掃除機・網・猫に注意。";
+            stage.description = Description;
             stage.playable = true; stage.sceneName = Path.GetFileNameWithoutExtension(ScenePath);
             stage.unlocks = "stage03"; stage.unlocksTitle = "飲食店"; stage.reward = ""; stage.rewardTitle = "";
             stage.zones = ZoneNames.Select((n, i) => new StageDefinition.Zone { name = n, centre = ZoneCentres[i], radius = ZoneRadii[i] }).ToArray();
@@ -259,12 +287,14 @@ namespace GokiTakeover.Editor
             stage.residentHuntsAllies = true; stage.allyReactionSeconds = 0.85f; stage.allyStunSeconds = 1.6f; stage.allyWoundHealSeconds = 35;
             stage.allyAlarmRadius = 2.0f; stage.allyCollectReactionScale = 1.6f;
             stage.nestFumigations = new[] { 8f, 30f, 55f }; stage.nestFumigationWarning = 4.5f; stage.nestFumigationSeconds = 15; stage.nestSmokeDamageEvery = 1.1f;
-            stage.humanDetectionScale = 0.85f; stage.humanSpeedScale = 1.08f; stage.heatArea = new Rect(-7, -6, 28.4f, 12); stage.familyLeavesForDefence = true;
+            stage.humanDetectionScale = 0.85f; stage.humanSpeedScale = 1.08f; stage.heatArea = HouseArea; stage.familyLeavesForDefence = true; stage.calmSeconds = 60;
             stage.finalDefenceSeconds = 80; stage.foggerInterval = 11; stage.foggerWarning = 3.2f; stage.foggerDuration = 9; stage.foggerRadius = 3.0f; stage.maxFoggers = 3;
             stage.exitPoint = ExitPoint;
             stage.parSeconds = 1080; stage.fewDiscoveries = 4; stage.someDiscoveries = 10; stage.manyAllies = 8; stage.someAllies = 5;
             EditorUtility.SetDirty(stage);
         }
+
+        public const string Description = "父・母・息子と猫が暮らす4部屋の一軒家。掃除機・網・猫に注意。";
 
         // ---------------- Rooms ----------------
         private static void LoadMaterials()
@@ -305,12 +335,13 @@ namespace GokiTakeover.Editor
 
             float cx = (LivingMinX + LivingMaxX) / 2, w = LivingMaxX - LivingMinX;
             P.Box("Floor", living, new Vector3(cx, -0.15f, 0), new Vector3(w + 0.1f, 0.3f, 12), oakFloor);
-            var back = Climb(P.Box("Wall_Back", living, new Vector3(cx, 2.7f, 6.12f), new Vector3(w + 0.24f, 5.4f, 0.24f), plasterWarm));
+            WallWithDoor("Wall_Back", living, 7.0f, LivingMaxX + 0.24f, KidDoorXMin, KidDoorXMax, 6.12f, true, plasterWarm);
             var front = Climb(P.Box("Wall_Front", living, new Vector3(cx, 2.7f, -6.12f), new Vector3(w + 0.24f, 5.4f, 0.24f), plasterWarm));
             Climb(P.Box("Wall_Right", living, new Vector3(LivingMaxX + 0.12f, 2.7f, 0), new Vector3(0.24f, 5.4f, 12.48f), plasterWarm));
             var ceiling = Climb(P.Box("Ceiling", living, new Vector3(cx, 5.5f, 0), new Vector3(w + 0.48f, 0.2f, 12.48f), plasterWarm));
             ceiling.GetComponent<MeshRenderer>().shadowCastingMode = ShadowCastingMode.Off;
-            for (int side = -1; side <= 1; side += 2) P.Box("Skirting", living, new Vector3(cx, 0.15f, side * 5.96f), new Vector3(w, 0.3f, 0.08f), walnut, false);
+            P.Box("Skirting", living, new Vector3(cx, 0.15f, -5.96f), new Vector3(w, 0.3f, 0.08f), walnut, false);
+            Skirting(living, LivingMinX, LivingMaxX, KidDoorXMin, KidDoorXMax, 5.96f, true);
             P.Box("Skirting", living, new Vector3(LivingMaxX - 0.04f, 0.15f, 0), new Vector3(0.08f, 0.3f, 12), walnut, false);
             P.Box("Skirting", living, new Vector3(7.28f, 0.15f, (-6 + DoorZMin) / 2), new Vector3(0.08f, 0.3f, DoorZMin + 6), walnut, false);
             P.Box("Skirting", living, new Vector3(7.28f, 0.15f, (DoorZMax + 6) / 2), new Vector3(0.08f, 0.3f, 6 - DoorZMax), walnut, false);
@@ -405,12 +436,7 @@ namespace GokiTakeover.Editor
                 P.Rod("Stem", pot, new Vector3(0, 1.0f, 0), end, 0.04f, leaf);
                 P.Sphere("Leaf", pot, end, new Vector3(0.35f, 0.08f, 0.8f), leaf).localRotation = Quaternion.Euler(20, i * 137, 25);
             }
-            var night = AssetDatabase.LoadAssetAtPath<Material>(P.Root + "/Materials/NightWindow.mat");
-            P.Box("WindowRecess", living, new Vector3(15.5f, 4.0f, 5.94f), new Vector3(3.6f, 1.9f, 0.12f), charcoal, false);
-            P.Box("NightGlass", living, new Vector3(15.5f, 4.0f, 5.86f), new Vector3(3.4f, 1.7f, 0.035f), night, false);
-            var curtain = P.Material("Stage02_Curtain", new Color(0.62f, 0.52f, 0.36f), 0.05f);
-            for (int s = -1; s <= 1; s += 2) P.Box("Curtain", living, new Vector3(15.5f + s * 2.1f, 3.6f, 5.8f), new Vector3(0.8f, 3.2f, 0.08f), curtain, false);
-            P.Rod("CurtainRail", living, new Vector3(13.0f, 5.15f, 5.8f), new Vector3(18.0f, 5.15f, 5.8f), 0.05f, metal);
+            Picture(living, new Vector3(15.5f, 4.0f, 5.97f), 0, new Color(0.46f, 0.62f, 0.72f), new Color(0.32f, 0.46f, 0.26f));
             P.Sphere("CeilingLamp", living, new Vector3(15.0f, 5.33f, 0.4f), new Vector3(1.6f, 0.18f, 1.6f), glow);
             var main = GeneratedAssets.Empty("LivingLight", living, new Vector3(15.0f, 4.4f, 0.4f)).gameObject.AddComponent<Light>();
             main.type = LightType.Point; main.color = new Color(1f, 0.74f, 0.46f); main.intensity = 2.8f; main.range = 11f; main.shadows = LightShadows.None; main.renderMode = LightRenderMode.ForcePixel;
@@ -455,7 +481,7 @@ namespace GokiTakeover.Editor
             var bed = GeneratedAssets.Empty("CatBed", living, CatBed);
             P.Rod("Rim", bed, Vector3.zero, new Vector3(0, 0.32f, 0), 2.2f, cushion);
             P.Rod("Cushion", bed, new Vector3(0, 0.02f, 0), new Vector3(0, 0.36f, 0), 1.8f, inner);
-            P.Sphere("Bowl", living, CatBed + new Vector3(1.5f, 0.12f, 0.6f), new Vector3(0.7f, 0.24f, 0.7f), P.Material("Stage02_CatBowl", new Color(0.2f, 0.42f, 0.7f), 0.6f));
+            P.Sphere("Bowl", living, CatBed + new Vector3(-1.3f, 0.12f, -0.9f), new Vector3(0.7f, 0.24f, 0.7f), P.Material("Stage02_CatBowl", new Color(0.2f, 0.42f, 0.7f), 0.6f));
         }
         /// <summary>
         /// The cat's own floor: a cat-sized probe (radius 0.55 at height 1.0) instead of a roach's, so it cannot go under the
@@ -504,7 +530,7 @@ namespace GokiTakeover.Editor
             var build = NavMesh.GetSettingsByIndex(0);
             build.agentRadius = 0.42f; build.agentHeight = 4.1f; build.agentClimb = 0.18f; build.agentSlope = 40;
             build.overrideVoxelSize = true; build.voxelSize = 0.10f;
-            var baked = NavMeshBuilder.BuildNavMeshData(build, sources, new Bounds(new Vector3(7.2f, 2, 0), new Vector3(30, 6, 14)), Vector3.zero, Quaternion.identity);
+            var baked = NavMeshBuilder.BuildNavMeshData(build, sources, new Bounds(new Vector3(7.2f, 2, 5.1f), new Vector3(30, 6, 24)), Vector3.zero, Quaternion.identity);
             if (!baked) throw new InvalidOperationException("一軒家のNavMesh生成に失敗しました。");
             var navigation = AssetDatabase.LoadAssetAtPath<NavMeshData>(NavPath);
             if (navigation) { EditorUtility.CopySerialized(baked, navigation); UnityEngine.Object.DestroyImmediate(baked); }
@@ -555,9 +581,7 @@ namespace GokiTakeover.Editor
 
         private static void SetPatrol(HumanAIController human, Vector3[] stops, string prefix)
         {
-            var navigation = (NavMeshData)new SerializedObject(UnityEngine.Object.FindFirstObjectByType<KitchenNavigation>()).FindProperty("data").objectReferenceValue;
-            var instance = NavMesh.AddNavMeshData(navigation);
-            try
+            WithNavMesh(() =>
             {
                 var link = new SerializedObject(human);
                 var points = link.FindProperty("patrolPoints");
@@ -572,7 +596,14 @@ namespace GokiTakeover.Editor
                 }
                 SetArray(points, result.Cast<UnityEngine.Object>().ToArray());
                 link.ApplyModifiedPropertiesWithoutUndo();
-            }
+            });
+        }
+        /// <summary>Runs with the house's human NavMesh loaded (for sampling points on it).</summary>
+        private static void WithNavMesh(Action work)
+        {
+            var navigation = (NavMeshData)new SerializedObject(UnityEngine.Object.FindFirstObjectByType<KitchenNavigation>()).FindProperty("data").objectReferenceValue;
+            var instance = NavMesh.AddNavMeshData(navigation);
+            try { work(); }
             finally { instance.Remove(); }
         }
 
