@@ -302,6 +302,7 @@ namespace GokiTakeover
             yield return WaitFor(() => cat.Current == PetCat.Phase.Recover, 3);
             Check(kitten.Stunned && cat.AllyHits == 1, "逃げ遅れた仲間は猫パンチでひっくり返る（スリッパと同じ）");
             yield return null;
+            yield return CatRoams();
 
             // ---- Final defence: the family leaves, the father becomes the exterminator ----
             colony.DebugGrant(0);
@@ -488,6 +489,31 @@ namespace GokiTakeover
             ShowFrom(eye, target);
             yield return Capture(name);
             cameraRig.enabled = true;
+        }
+
+        // The cat wanders all four rooms for a while (at 4x speed): wherever it heads, it never stands stuck.
+        private IEnumerator CatRoams()
+        {
+            PlaceExact(session.Nest.position + Vector3.up * 0.1f);   // nothing for it to stalk
+            UnityEngine.Random.InitState(7);
+            cat.DebugWander();
+            float scale = Time.timeScale;
+            Time.timeScale = 4;
+            float end = Time.time + 150, realEnd = Time.realtimeSinceStartup + 60, stillSince = Time.time, worst = 0, travelled = 0;
+            Vector3 last = cat.transform.position, worstAt = last;
+            var rooms = new HashSet<int>();
+            while (Time.time < end && Time.realtimeSinceStartup < realEnd)
+            {
+                yield return null;
+                if (cat.Current == PetCat.Phase.Nap) cat.DebugWander();
+                Vector3 now = cat.transform.position;
+                bool meantToMove = cat.Current == PetCat.Phase.Wander && !cat.Resting || cat.Current == PetCat.Phase.Stalk;
+                if (!meantToMove || Flat(now - last).magnitude > 0.3f) { travelled += Flat(now - last).magnitude; last = now; stillSince = Time.time; }
+                if (Time.time - stillSince > worst) { worst = Time.time - stillSince; worstAt = now; }
+                rooms.Add((now.x > 7.12f ? 1 : 0) + (now.z > 6.12f ? 2 : 0));
+            }
+            Time.timeScale = scale;
+            Check(worst < 4f && rooms.Count >= 3, "猫は家中を歩き回っても引っかからない（最長停止 " + worst.ToString("F1") + "秒 @" + worstAt.ToString("F1") + "・" + travelled.ToString("F0") + "m・" + rooms.Count + "部屋）");
         }
 
         private void FreezeAll()

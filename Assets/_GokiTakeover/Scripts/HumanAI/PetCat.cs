@@ -30,6 +30,11 @@ namespace GokiTakeover
         private int pathIndex, target = -2;   // -2 none, -1 the player, else an ally slot
         private float clock, sense, phaseUntil, cooldownUntil, repathAt, idleUntil, wanderUntil;
         private bool hasPath, missLogged;
+        // Stuck watch: no headway for a while means plan again; several times over means give that goal up.
+        private float watchAt;
+        private Vector3 watchFrom;
+        private int stuck;
+        public int Unstuck { get; private set; }
         public Phase Current { get; private set; }
         public float Interest { get; private set; }
         public bool TargetIsPlayer => target == -1;
@@ -41,6 +46,8 @@ namespace GokiTakeover
         public int LostInterest { get; private set; }
         public float Remaining => Current == Phase.Crouch ? CrouchSeconds - clock : 0;
         public bool Stalking => Current == Phase.Stalk || Current == Phase.Crouch || Current == Phase.Leap;
+        // Sitting a moment between two wander goals (not stuck).
+        public bool Resting => Current == Phase.Wander && Time.time < idleUntil;
         public Vector3 LookPoint { get; private set; }
         public string Label
         {
@@ -81,6 +88,7 @@ namespace GokiTakeover
             if (skin) skin.gameObject.SetActive(true);
             Hide();
             Current = Phase.Nap; clock = 0; phaseUntil = 6f; target = -2; Interest = 0; velocity = Vector3.zero; hasPath = false;
+            stuck = 0; Unstuck = 0; watchAt = 0;
             cooldownUntil = 0; Pounces = PlayerHits = AllyHits = LostInterest = 0;
         }
 
@@ -192,7 +200,7 @@ namespace GokiTakeover
             if (clock >= wanderUntil)
             {
                 // Tired: back to the bed for a nap.
-                if (Steer(bed, WanderSpeed, dt, 0.4f)) { Current = Phase.Nap; clock = 0; phaseUntil = Random.Range(12f, 20f); target = -2; Interest = 0; }
+                if (Steer(bed, WanderSpeed, dt, 0.4f) || stuck >= 3) { Current = Phase.Nap; clock = 0; phaseUntil = Random.Range(12f, 20f); target = -2; Interest = 0; stuck = 0; }
                 return;
             }
             if (Time.time < idleUntil) { velocity = Vector3.MoveTowards(velocity, Vector3.zero, 6 * dt); return; }
@@ -207,11 +215,12 @@ namespace GokiTakeover
                 return;
             }
             Steer(goal, WanderSpeed, dt, 0.5f);
+            if (stuck >= 2) { stuck = 0; hasPath = false; idleUntil = Time.time + 0.5f; }   // somewhere else then
         }
 
         private void StartStalk()
         {
-            Current = Phase.Stalk; clock = 0; hasPath = false;
+            Current = Phase.Stalk; clock = 0; hasPath = false; stuck = 0; watchAt = Time.time + 1.5f; watchFrom = Flat(transform.position);
             if (target == -1) { commander.Say("猫に見つかった！  止まればやり過ごせる"); if (colony) colony.Learn("cat"); }
         }
 
@@ -225,6 +234,8 @@ namespace GokiTakeover
             if (d <= PounceRange && Visible(target) && Moving(target) && Time.time >= cooldownUntil)
             { BeginPounce(target == -1 ? p : p + Vector3.ClampMagnitude(commander.Allies[target].Velocity * 0.4f, 0.6f)); return; }
             Steer(p, d > 4 ? StalkSpeed * 1.6f : StalkSpeed, dt, PounceRange * 0.8f);
+            // Out of its reach (no way there, or it keeps getting stuck): it gives up on that roach.
+            if (stuck >= 2) { stuck = 0; target = -2; Interest = 0; Current = Phase.Wander; clock = 0; hasPath = false; cooldownUntil = Time.time + Cooldown; }
         }
 
         /// <summary>Follows a path on the cat's own grid; true once within tolerance.</summary>
@@ -234,19 +245,43 @@ namespace GokiTakeover
             if (!grid.Walkable(to) && grid.NearestWalkable(to, 1.5f, out Vector3 free)) to = free;
             Vector3 here = Flat(transform.position);
             if ((to - here).magnitude <= tolerance) { velocity = Vector3.MoveTowards(velocity, Vector3.zero, 6 * dt); return true; }
+            // Off its floor (a landing, a squeeze): step back onto the nearest free spot first.
+            if (!grid.Walkable(here))
+            {
+                if (grid.NearestWalkable(here, 1.5f, out Vector3 back)) transform.position = Vector3.MoveTowards(here, back, speed * dt);
+                velocity = Vector3.zero;
+                return false;
+            }
             if (!hasPath || Time.time >= repathAt || (to - goal).sqrMagnitude > 0.5f)
             {
                 goal = to; repathAt = Time.time + 0.5f; pathIndex = 0;
                 hasPath = grid.FindPath(here, to, path);
-                if (!hasPath) { velocity = Vector3.zero; return false; }
+                if (!hasPath) { velocity = Vector3.zero; stuck++; Unstuck++; return false; }   // no way there: counts as stuck
             }
             while (pathIndex < path.Count - 1 && (path[pathIndex] - here).sqrMagnitude < 0.04f) pathIndex++;
             Vector3 toward = path[Mathf.Min(pathIndex, path.Count - 1)] - here;
             Vector3 desired = toward.sqrMagnitude > 1e-4f ? toward.normalized * speed : Vector3.zero;
             velocity = Vector3.MoveTowards(velocity, desired, speed * 6 * dt);
             Vector3 next = here + velocity * dt;
-            if (grid.Walkable(next)) transform.position = next;
+            if (!grid.Walkable(next))
+            {
+                // Its sway carried it off the straight line at a doorway or corner: head straight for the waypoint, else
+                // slide along the edge, never stop dead against it.
+                Vector3 direct = here + desired * dt, alongX = here + new Vector3(velocity.x * dt, 0, 0), alongZ = here + new Vector3(0, 0, velocity.z * dt);
+                if (grid.Walkable(direct)) { next = direct; velocity = desired; }
+                else if (grid.Walkable(alongX)) { next = alongX; velocity.z = 0; }
+                else if (grid.Walkable(alongZ)) { next = alongZ; velocity.x = 0; }
+                else { next = here; velocity = Vector3.zero; repathAt = 0; }
+            }
+            transform.position = next;
             if (velocity.sqrMagnitude > 0.01f) transform.rotation = Quaternion.RotateTowards(transform.rotation, Quaternion.LookRotation(velocity), 300 * dt);
+            // No headway for 1.5 s: plan again from here (the callers give the goal up after a few).
+            if (Time.time >= watchAt)
+            {
+                bool still = (here - watchFrom).magnitude < 0.15f;
+                watchFrom = here; watchAt = Time.time + 1.5f;
+                if (still) { stuck++; Unstuck++; hasPath = false; } else stuck = 0;
+            }
             return false;
         }
         private void Face(Vector3 at, float dt)
@@ -311,7 +346,7 @@ namespace GokiTakeover
         // Verification only.
         public void DebugStalkPlayer() { target = -1; Interest = 0.6f; StartStalk(); }
         public void DebugPounce(Vector3 at) { cooldownUntil = 0; BeginPounce(at); }
-        public void DebugWander() { Current = Phase.Wander; clock = 0; wanderUntil = 60; target = -2; Interest = 0; hasPath = false; }
+        public void DebugWander() { Current = Phase.Wander; clock = 0; wanderUntil = 60; target = -2; Interest = 0; hasPath = false; stuck = 0; watchAt = Time.time + 1.5f; watchFrom = Flat(transform.position); }
         public void DebugPlace(Vector3 at, float yaw) { transform.SetPositionAndRotation(Flat(at), Quaternion.Euler(0, yaw, 0)); hasPath = false; }
 #endif
         private static Vector3 Flat(Vector3 v) { v.y = 0; return v; }
