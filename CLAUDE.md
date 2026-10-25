@@ -38,7 +38,7 @@
 - 生成と Edit Mode 検証: GokiTakeover.Editor.PhaseFiveVerification.GenerateAndVerify
 - Play Mode: VerifyPlayMode（ステージ1）、VerifyStageTwoPlay（ステージ2）
 - 回帰: VerifyPhaseFourRegression / VerifyPhaseThreeRegression / VerifyBlenderRegression / VerifyPhaseTwoRegression
-- ビルド: GokiTakeover.Editor.PhaseFiveGenerator.BuildBoth（検証版 Logs/ValidationPlayer と公開版の両方）
+- ビルド: GokiTakeover.Editor.PhaseFiveGenerator.BuildBoth（検証版 Logs/ValidationPlayer と公開版の両方）。**BuildBoth は自分で Unity を終了しないので必ず -quit を付ける**（付けないと終わった後も待ち続ける）
 - 検証版プレイヤー: -goki-phase5-test / -goki-stage2-test と -goki-output <フォルダ>（1280×720 ウィンドウ）
 
 ## 5. 完了の定義（すべて満たすまで「完了」と報告しない）
