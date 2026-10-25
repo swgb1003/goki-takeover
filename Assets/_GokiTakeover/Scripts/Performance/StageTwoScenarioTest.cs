@@ -303,6 +303,7 @@ namespace GokiTakeover
             Check(kitten.Stunned && cat.AllyHits == 1, "逃げ遅れた仲間は猫パンチでひっくり返る（スリッパと同じ）");
             yield return null;
             yield return CatRoams();
+            yield return TacticsChecks();
 
             // ---- Final defence: the family leaves, the father becomes the exterminator ----
             colony.DebugGrant(0);
@@ -495,6 +496,92 @@ namespace GokiTakeover
             ShowFrom(eye, target);
             yield return Capture(name);
             cameraRig.enabled = true;
+        }
+
+        // The tactics view with left clicks only: pick allies one by one, order them, draw a route for a decoy run.
+        private IEnumerator TacticsChecks()
+        {
+            var view = this.view;
+            var overview = FindFirstObjectByType<SwarmViewCamera>(FindObjectsInactive.Include);
+            PlaceExact(session.Nest.position + Vector3.up * 0.1f);
+            cat.ResetCat();
+            foreach (var a in commander.Allies) if (a.gameObject.activeSelf) a.gameObject.SetActive(false);
+            var team = new List<AllyRoach>();
+            Vector3[] starts = { new Vector3(2.4f, 0, -1.6f), new Vector3(3.4f, 0, -1.6f), new Vector3(4.4f, 0, -1.6f), new Vector3(2.4f, 0, -3.4f), new Vector3(3.6f, 0, -3.4f) };
+            foreach (var s in starts) { var a = commander.AddAlly(); a.Spawn(s, 0); team.Add(a); }
+            commander.enabled = true;
+            commander.SetMode(SwarmCommander.ViewMode.Swarm);
+            Check(commander.ClickOrders && commander.SelectedCount == 0, "軍団モード（ステージ）: 左クリック操作・最初は選択なし（＝全員）");
+            overview.FocusOn(new Vector3(3.4f, 0, -2.5f));
+            yield return WaitFor(() => false, 1.5f);
+            Vector3 OnScreen(Vector3 world) => view.WorldToScreenPoint(world + Vector3.up * 0.3f);
+            Vector3 Floor(Vector3 world) => view.WorldToScreenPoint(world);
+
+            // Picking allies one click at a time (a second click drops one); X clears.
+            commander.ClickAt(view, OnScreen(team[0].Position));
+            commander.ClickAt(view, OnScreen(team[1].Position));
+            Check(commander.IsSelected(team[0].Slot) && commander.IsSelected(team[1].Slot) && commander.SelectedCount == 2, "仲間を左クリックするたびに選択に加わる（2匹）");
+            commander.ClickAt(view, OnScreen(team[0].Position));
+            Check(!commander.IsSelected(team[0].Slot) && commander.SelectedCount == 1, "選んだ仲間をもう一度クリックすると外れる");
+            commander.ClearSelection();
+            Check(commander.Command(AllyRoach.Order.Defend) == team.Count, "何も選んでいなければ指示は全員へ（" + team.Count + "匹）");
+            // Clicking the floor and a zone orders only the chosen ones.
+            commander.ClickAt(view, OnScreen(team[0].Position)); commander.ClickAt(view, OnScreen(team[1].Position));
+            commander.ClickAt(view, Floor(new Vector3(5.4f, 0, -2.6f)));
+            Check(team[0].CurrentOrder == AllyRoach.Order.Move && team[1].CurrentOrder == AllyRoach.Order.Move && team[2].CurrentOrder == AllyRoach.Order.Defend, "床を左クリック: 選んだ仲間だけが移動");
+            commander.ClearSelection();
+            commander.ClickAt(view, OnScreen(team[2].Position));
+            int table = progress.ZoneAt(new Vector3(-2.3f, 0, -0.9f));
+            commander.ClickAt(view, Floor(new Vector3(-2.3f, 0, -2.0f)));   // inside the zone, clear of the leftovers dropped under the table (a click on food collects it)
+            Check(team[2].CurrentOrder == AllyRoach.Order.Capture && team[2].CaptureZone == table && team[3].CurrentOrder == AllyRoach.Order.Defend, "区域を左クリック: 選んだ仲間がその区域を占拠しに行く（" + team[2].CurrentOrder + "・区域 " + team[2].CaptureZone + "/" + table + "・空き " + progress.ZoneOpen(table) + "）");
+
+            // A route drawn by dragging: two decoys run it in the open and hide at its end.
+            commander.ClearSelection();
+            foreach (var a in team) a.SetOrder(AllyRoach.Order.Defend, Vector3.zero);
+            commander.ClickAt(view, OnScreen(team[0].Position)); commander.ClickAt(view, OnScreen(team[1].Position));
+            Vector3[] line = { new Vector3(3.0f, 0, -2.4f), new Vector3(4.2f, 0, -2.0f), new Vector3(5.4f, 0, -1.2f), new Vector3(5.6f, 0, 0.2f), new Vector3(4.4f, 0, 0.8f), new Vector3(2.8f, 0, 0.6f), new Vector3(1.2f, 0, -0.4f) };
+            commander.PressAt(Floor(line[0]));
+            for (int i = 1; i < line.Length; i++)
+                for (int k = 1; k <= 6; k++) commander.DragTo(view, Floor(Vector3.Lerp(line[i - 1], line[i], k / 6f)));
+            Check(commander.DrawingRoute && commander.RouteDraft.Count >= 8, "ドラッグするとルートの軌跡が描かれる（" + commander.RouteDraft.Count + "点）");
+            if (playerRun) yield return Capture("stage2-route-draw-720p.png");
+            commander.ReleaseAt(view, Floor(line[line.Length - 1]));
+            Check(team[0].OnRoute && team[1].OnRoute && !team[2].OnRoute && commander.RoutesIssued == 1 && commander.ActiveRoutes.Count == 1,
+                "離すと選んだ2匹がルートを走り出す（ほかの仲間はそのまま）");
+            // A decoy holds to its route even with the cat about to pounce on it; an ally off the route runs.
+            yield return WaitFor(() => team[0].RouteIndex >= 2, 4);
+            Vector3 ahead = commander.ActiveRoutes[0].Points[Mathf.Min(team[0].RouteIndex + 1, commander.ActiveRoutes[0].Points.Count - 1)];
+            team[4].Spawn(ahead + new Vector3(0.3f, 0, 0), 0); team[4].SetOrder(AllyRoach.Order.Defend, Vector3.zero);
+            cat.DebugPounce(ahead);
+            yield return new WaitForSeconds(PetCat.AllyNotice + 0.1f);
+            Check((team[0].OnRoute || team[0].Stunned) && team[4].State == AllyRoach.AllyState.FleeHazard, "ルートを走る仲間は狙われても逃げずに走り抜ける（ほかの仲間は逃げる）");
+            if (playerRun) yield return Capture("stage2-route-run-720p.png");
+            yield return WaitFor(() => !team[1].OnRoute, 12);
+            yield return WaitFor(() => team[1].State == AllyRoach.AllyState.Idle, 6);
+            Check(!team[1].OnRoute && team[1].CurrentOrder == AllyRoach.Order.Move && cat.Covered(team[1].Position), "ただの床で走り終えた仲間は近くの物陰に隠れる（" + team[1].Position.ToString("F1") + "）");
+            // A route that ends on a zone: the runner takes the zone.
+            commander.ClearSelection();
+            commander.ClickAt(view, OnScreen(team[3].Position));
+            Vector3 sofa = new Vector3(15.5f, 0, 4.45f);
+            int sofaZone = progress.ZoneAt(sofa);
+            commander.CommandRoute(new List<Vector3> { team[3].Position, new Vector3(6.0f, 0, -3.5f), new Vector3(9.0f, 0, -3.0f), new Vector3(13.0f, 0, 2.8f), sofa }, null, sofaZone);
+            yield return WaitFor(() => team[3].CurrentOrder == AllyRoach.Order.Capture, 15);
+            Check(team[3].CurrentOrder == AllyRoach.Order.Capture && team[3].CaptureZone == sofaZone, "区域で終わるルート: 走り終えるとその区域を占拠する");
+
+            // More roaches in a zone fill it faster.
+            Check(progress.HoldRate(progress.Stage.holdPresence - 1) == 0 && Mathf.Approximately(progress.HoldRate(progress.Stage.holdPresence), 1) && Mathf.Approximately(progress.HoldRate(progress.Stage.holdPresence + 1), 1.5f)
+                && Mathf.Approximately(progress.HoldRate(progress.Stage.holdPresence + 2), 2) && Mathf.Approximately(progress.HoldRate(progress.Stage.holdPresence + 9), 3),
+                "区域にいるゴキが多いほど速くたまる（必要数で1倍・1匹増えるごとに+0.5倍・最大3倍）");
+            commander.enabled = false;
+            int fridge = progress.ZoneAt(new Vector3(-3.9f, 0, 2.7f));
+            for (int i = 0; i < team.Count; i++) team[i].Spawn(new Vector3(-3.9f + (i % 3 - 1) * 0.4f, 0, 2.5f + (i / 3) * 0.4f), 0);
+            yield return WaitFor(() => progress.ZonePresence(fridge) == team.Count, 2);   // zones are counted a few times a second
+            Check(progress.ZonePresence(fridge) == team.Count && Mathf.Approximately(progress.ZoneRate(fridge), progress.HoldRate(team.Count)) && progress.ZoneRate(fridge) > 1.9f,
+                "「冷蔵庫の前」に" + progress.ZonePresence(fridge) + "/" + team.Count + (progress.ZoneContested(fridge) ? "（人間がいる）" : "") + "匹: ×" + progress.ZoneRate(fridge).ToString("0.#") + " の速さでたまる");
+            if (playerRun) { commander.enabled = true; yield return null; yield return Capture("stage2-route-zone-720p.png"); commander.enabled = false; }
+            foreach (var a in team) a.gameObject.SetActive(false);
+            commander.SetMode(SwarmCommander.ViewMode.ThirdPerson);
+            cameraRig.enabled = false;
         }
 
         // The cat wanders all four rooms for a while (at 4x speed): wherever it heads, it never stands stuck.

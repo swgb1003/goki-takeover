@@ -73,6 +73,20 @@ namespace GokiTakeover
         public readonly List<IAllyThreat> HouseholdThreats = new List<IAllyThreat>();
         // Phase 5: territory for the capture order, and allies that die for good (corpse seconds; 0 = respawn at the nest).
         public ICaptureZones Zones { get; set; }
+        // Phase 5 tactics view: left clicks only. Click an ally to add it to (or drop it from) the selection; click food,
+        // a zone or the floor to send the chosen allies there (none chosen: every ally); drag to draw a route for them.
+        // Off (Phase 3-4): left drag selects in a box, right click orders, 4 rallies.
+        public bool ClickOrders { get; set; }
+        public const float RoutePointSpacing = 0.5f, DragStartPixels = 14f;
+        public const int MaxRoutePoints = 160;
+        private readonly List<Vector3> draft = new List<Vector3>(MaxRoutePoints);
+        private readonly List<AllyRoute> routes = new List<AllyRoute>();
+        private bool pressing;
+        private Vector3 pressMouse;
+        private List<Vector3> cover;
+        public IReadOnlyList<Vector3> RouteDraft => draft;
+        public bool DrawingRoute { get; private set; }
+        public int RoutesIssued { get; private set; }
         public float AllyCorpseSeconds { get; set; }
         public int AllyDeaths { get; private set; }
         // Phase 5: an ally under a raised slipper freezes about this long before it runs (0 = runs at once).
@@ -172,12 +186,13 @@ namespace GokiTakeover
             if (Input.GetKeyDown(KeyCode.Alpha1) || Input.GetKeyDown(KeyCode.Keypad1)) Command(AllyRoach.Order.Collect);
             if (Input.GetKeyDown(KeyCode.Alpha2) || Input.GetKeyDown(KeyCode.Keypad2)) Command(AllyRoach.Order.Explore);
             if (Input.GetKeyDown(KeyCode.Alpha3) || Input.GetKeyDown(KeyCode.Keypad3)) Command(AllyRoach.Order.Defend);
-            if (Input.GetKeyDown(KeyCode.Alpha4) || Input.GetKeyDown(KeyCode.Keypad4)) Command(AllyRoach.Order.Rally);
+            if (!ClickOrders && (Input.GetKeyDown(KeyCode.Alpha4) || Input.GetKeyDown(KeyCode.Keypad4))) Command(AllyRoach.Order.Rally);
             if (Zones != null && (Input.GetKeyDown(KeyCode.Alpha5) || Input.GetKeyDown(KeyCode.Keypad5))) Command(AllyRoach.Order.Capture);
             if (CallInView && Mode == ViewMode.ThirdPerson) CallKey();
             else if (Input.GetKeyDown(KeyCode.F)) Command(AllyRoach.Order.Follow);
             if (Mode != ViewMode.Swarm) return;
             if (Input.GetKeyDown(KeyCode.Q)) SelectAll();
+            if (ClickOrders && Input.GetKeyDown(KeyCode.X)) ClearSelection();
             if (Input.GetKeyDown(KeyCode.Space)) swarmCamera.FocusOn(SelectedCount > 0 ? SelectionCentre : LeaderGround);
             HandlePointer();
         }
@@ -231,6 +246,7 @@ namespace GokiTakeover
             bool swarm = next == ViewMode.Swarm;
             ModeSwitches++;
             dragging = false;
+            pressing = false; DrawingRoute = false; draft.Clear();
             session.ExternalCursor = swarm;
             var follow = session.FollowCamera;
             // One camera object, one active controller: the two views never render at the same time.
@@ -244,7 +260,7 @@ namespace GokiTakeover
             bool locked = !swarm && session.IsRunning && Application.isFocused;
             Cursor.lockState = locked ? CursorLockMode.Locked : CursorLockMode.None;
             Cursor.visible = !locked;
-            if (swarm && SelectedCount == 0) SelectAll();
+            if (swarm && SelectedCount == 0 && !ClickOrders) SelectAll();   // click orders: none chosen means everyone
         }
 
         // ---- Orders ----
@@ -258,11 +274,11 @@ namespace GokiTakeover
             if (order == AllyRoach.Order.Rally && point == Vector3.zero) point = HasRallyPoint ? RallyPoint : LeaderGround;
             for (int i = 0; i < allies.Length; i++)
             {
-                if (!allies[i].Alive || (Mode == ViewMode.Swarm && !selected[i])) continue;
+                if (!Chosen(i)) continue;
                 allies[i].SetOrder(order, point, food);
                 count++;
             }
-            if (count == 0) { Say(ActiveAllyCount == 0 && AllyLimitOverride >= 0 ? NoAllyText : "仲間を選んでください（クリック・ドラッグ／Qで全員）"); return 0; }
+            if (count == 0) { Say(ActiveAllyCount == 0 && AllyLimitOverride >= 0 ? NoAllyText : SelectHint); return 0; }
             LastOrder = order;
             OrdersIssued++;
             if (order == AllyRoach.Order.Collect && AvailableFoodSpots == 0)
@@ -273,6 +289,10 @@ namespace GokiTakeover
         }
 
         private const string NoAllyText = "仲間がいません — 巣で E を押して仲間を増やそう";
+        private string SelectHint => ClickOrders ? "仲間をクリックして選ぼう（Q で全員）" : "仲間を選んでください（クリック・ドラッグ／Qで全員）";
+        // Who an order goes to: the selection in the tactics view (with click orders, everyone when none is chosen);
+        // every ally in the normal view.
+        private bool Chosen(int i) => allies[i].Alive && (Mode != ViewMode.Swarm || selected[i] || ClickOrders && SelectedCount == 0);
         private readonly List<AllyRoach> recipients = new List<AllyRoach>(9);
         private readonly List<AllyRoach> unassigned = new List<AllyRoach>(9);
         private readonly List<int> openZones = new List<int>(8);
@@ -287,8 +307,8 @@ namespace GokiTakeover
             if (Zones == null) return 0;
             recipients.Clear();
             for (int i = 0; i < allies.Length; i++)
-                if (allies[i].Alive && (Mode != ViewMode.Swarm || selected[i])) recipients.Add(allies[i]);
-            if (recipients.Count == 0) { Say(ActiveAllyCount == 0 ? NoAllyText : "仲間を選んでください（クリック・ドラッグ／Qで全員）"); return 0; }
+                if (Chosen(i)) recipients.Add(allies[i]);
+            if (recipients.Count == 0) { Say(ActiveAllyCount == 0 ? NoAllyText : SelectHint); return 0; }
             int zones = AssignCapture(recipients, zone);
             if (zones == 0) { Say(zone >= 0 ? "その区域は占領済みです" : "占領できる区域が残っていません"); return 0; }
             LastOrder = AllyRoach.Order.Capture;
@@ -391,12 +411,20 @@ namespace GokiTakeover
         }
         public void SelectAll() { for (int i = 0; i < allies.Length; i++) selected[i] = allies[i].Alive; }
         public void SelectOnly(int index) { for (int i = 0; i < allies.Length; i++) selected[i] = i == index; }
+        public void ClearSelection() { for (int i = 0; i < selected.Length; i++) selected[i] = false; }
 
         private void HandlePointer()
         {
             var view = swarmCamera.Camera;
             Vector3 mouse = Input.mousePosition;
             bool overUi = hud is ITacticsHud panels && panels.BlocksPointer(mouse);
+            if (ClickOrders)
+            {
+                if (Input.GetMouseButtonDown(0) && !overUi) PressAt(mouse);
+                if (pressing && Input.GetMouseButton(0)) DragTo(view, mouse);
+                if (pressing && Input.GetMouseButtonUp(0)) ReleaseAt(view, mouse);
+                return;
+            }
             if (Input.GetMouseButtonDown(0) && !overUi) { dragging = true; dragStart = mouse; }
             if (dragging && Input.GetMouseButtonUp(0))
             {
@@ -442,6 +470,106 @@ namespace GokiTakeover
             Command(AllyRoach.Order.Move, point, null);
         }
 
+        // ---- Click orders (Phase 5): press, then either a click or a drawn route ----
+        public void PressAt(Vector3 mouse) { pressing = true; pressMouse = mouse; DrawingRoute = false; draft.Clear(); }
+        public void DragTo(Camera view, Vector3 mouse)
+        {
+            if (!pressing) return;
+            if (!DrawingRoute)
+            {
+                if (((Vector2)mouse - (Vector2)pressMouse).magnitude < DragStartPixels) return;
+                DrawingRoute = true;
+                AddRoutePoint(view, pressMouse);
+            }
+            AddRoutePoint(view, mouse);
+        }
+        public void ReleaseAt(Camera view, Vector3 mouse)
+        {
+            if (!pressing) return;
+            pressing = false;
+            if (DrawingRoute)
+            {
+                DrawingRoute = false;
+                AddRoutePoint(view, mouse);
+                int food = PickFood(view, mouse, 40);
+                int zone = draft.Count > 0 && Zones != null ? Zones.ZoneAt(draft[draft.Count - 1]) : -1;
+                CommandRoute(draft, food >= 0 ? foods[food] : null, zone >= 0 && Zones.ZoneOpen(zone) ? zone : -1);
+                draft.Clear();
+                return;
+            }
+            ClickAt(view, mouse);
+        }
+        /// <summary>A click: an ally toggles in the selection; anything else orders the chosen allies there.</summary>
+        public void ClickAt(Camera view, Vector3 mouse)
+        {
+            int hit = PickAlly(view, mouse, 30);
+            if (hit >= 0) { selected[hit] = !selected[hit]; return; }
+            PointOrder(view, mouse);
+        }
+        // The floor under the cursor, kept on the allies' floor; spaced points so the route stays light.
+        private void AddRoutePoint(Camera view, Vector3 mouse)
+        {
+            if (draft.Count >= MaxRoutePoints) return;
+            Ray ray = view.ScreenPointToRay(mouse);
+            if (!new Plane(Vector3.up, Vector3.zero).Raycast(ray, out float enter)) return;
+            Vector3 p = ray.GetPoint(enter); p.y = 0;
+            if (!grid.Walkable(p) && !grid.NearestWalkable(p, 1.0f, out p)) return;
+            if (draft.Count > 0 && Flat(p - draft[draft.Count - 1]).magnitude < RoutePointSpacing) return;
+            draft.Add(p);
+        }
+        /// <summary>Sends the chosen allies (none chosen: everyone) along these floor points; returns how many went.</summary>
+        public int CommandRoute(IList<Vector3> points, FoodItem food, int zone)
+        {
+            if (points == null || points.Count < 2) { Say("ルートが短すぎます — 床をドラッグして線を引こう"); return 0; }
+            var route = new AllyRoute { Food = food, Zone = zone };
+            route.Points.AddRange(points);
+            int count = 0;
+            for (int i = 0; i < allies.Length; i++)
+            {
+                if (!Chosen(i)) continue;
+                allies[i].SetRoute(route);
+                count++;
+            }
+            if (count == 0) { Say(ActiveAllyCount == 0 ? NoAllyText : SelectHint); return 0; }
+            routes.Add(route);
+            RoutesIssued++; OrdersIssued++;
+            LastOrder = AllyRoach.Order.Route;
+            collectWarned = false;
+            Say("ルートを指示（" + count + "匹）  走り抜けて" + route.EndLabel);
+            return count;
+        }
+        /// <summary>Routes some ally is still running (for the tactics view to draw).</summary>
+        public IReadOnlyList<AllyRoute> ActiveRoutes
+        {
+            get
+            {
+                routes.RemoveAll(r => { foreach (var a in allies) if (a.Alive && a.Route == r) return false; return true; });
+                return routes;
+            }
+        }
+        /// <summary>The nearest floor with furniture overhead that can be walked to (the route's end when it asks to hide).</summary>
+        public Vector3 NearestCover(Vector3 from)
+        {
+            if (cover == null)
+            {
+                cover = new List<Vector3>();
+                for (int z = 0; z < grid.Depth; z += 2)
+                    for (int x = 0; x < grid.Width; x += 2)
+                    {
+                        Vector3 p = grid.ToWorld(x, z);
+                        if (grid.Walkable(p) && !session.InNest(p + Vector3.up * 0.1f) && Physics.Raycast(p + Vector3.up * 0.15f, Vector3.up, out RaycastHit roof, 3.3f, ~(1 << 2), QueryTriggerInteraction.Ignore)
+                            && !session.IsHumanBody(roof.transform)) cover.Add(p);
+                    }
+            }
+            Vector3 best = Flat(from); float bestDistance = float.MaxValue;
+            foreach (var p in cover)
+            {
+                float d = Flat(p - from).sqrMagnitude;
+                if (d < bestDistance && d < 64) { bestDistance = d; best = p; }
+            }
+            return best;
+        }
+
         private int PickAlly(Camera view, Vector3 mouse, float pixels)
         {
             int best = -1; float bestDistance = pixels * pixels;
@@ -480,7 +608,7 @@ namespace GokiTakeover
                 allies[i].gameObject.SetActive(true);
                 allies[i].ForgetFood();
                 allies[i].Spawn(NestPoint(i, 0.9f), i * 40);
-                if (Mode == ViewMode.Swarm) selected[i] = true;
+                if (Mode == ViewMode.Swarm && !ClickOrders) selected[i] = true;   // click orders: the newcomer joins "everyone"
                 return allies[i];
             }
             return null;

@@ -15,7 +15,7 @@ namespace GokiTakeover
     public sealed class AllyRoach : MonoBehaviour
     {
         public enum AllyState { Idle, FollowLeader, GoToTarget, Explore, CollectFood, ReturnToNest, DefendNest, FleeHazard, Disabled, Stunned }
-        public enum Order { Follow, Collect, Explore, Defend, Rally, Move, Capture }
+        public enum Order { Follow, Collect, Explore, Defend, Rally, Move, Capture, Route }
         [SerializeField] private CockroachVisualController visual;
         [SerializeField] private Transform carryAnchor, body;
         private SwarmCommander commander;
@@ -46,6 +46,11 @@ namespace GokiTakeover
         public bool Stunned => State == AllyState.Stunned;
         public int Flips { get; private set; }
         public float CalledAt { get; set; } = -10;
+        // Route order (Phase 5 tactics view): run the drawn line point by point at full speed, holding to it even
+        // when threatened (a decoy), then do what its end asks (collect the food, take the zone, else hide nearby).
+        public AllyRoute Route { get; private set; }
+        public int RouteIndex { get; private set; }
+        public bool OnRoute => Route != null && CurrentOrder == Order.Route && State == AllyState.GoToTarget;
 
         public void Configure(CockroachVisualController legs, Transform anchor, Transform model)
         { visual = legs; carryAnchor = anchor; body = model; }
@@ -75,11 +80,20 @@ namespace GokiTakeover
             CurrentOrder = order;
             orderPoint = point;
             CaptureZone = -1;
+            if (order != Order.Route) Route = null;
             hasPath = false;
             unreachable.Clear(); skippedPoints.Clear();
             if (scoutPoint >= 0) { commander.ReleaseScout(scoutPoint, this); scoutPoint = -1; }
             TargetFood = order == Order.Collect && food && commander.CanTarget(food, this) ? food : null;
             State = StateFor(order);
+        }
+
+        /// <summary>Route order: run along these floor points (from the first), then the route's end order.</summary>
+        public void SetRoute(AllyRoute route)
+        {
+            if (IsDead || route == null || route.Points.Count == 0) return;
+            SetOrder(Order.Route, route.Points[route.Points.Count - 1]);
+            Route = route; RouteIndex = 0;
         }
 
         /// <summary>Capture order: walk into the zone and stay there, close to its centre.</summary>
@@ -97,7 +111,7 @@ namespace GokiTakeover
                 case Order.Collect: return AllyState.CollectFood;
                 case Order.Explore: return AllyState.Explore;
                 case Order.Defend: return AllyState.DefendNest;
-                case Order.Rally: case Order.Move: case Order.Capture: return AllyState.GoToTarget;
+                case Order.Rally: case Order.Move: case Order.Capture: case Order.Route: return AllyState.GoToTarget;
                 default: return AllyState.FollowLeader;
             }
         }
@@ -114,7 +128,7 @@ namespace GokiTakeover
             }
             if (State == AllyState.Stunned) { Kick(dt); return; }
             if (Wounded && (Time.time >= healAt || commander.Session.InNest(Position + Vector3.up * 0.1f))) Wounded = false;
-            if (commander.Threatened(this, out Vector3 escape))
+            if (!OnRoute && commander.Threatened(this, out Vector3 escape))
             {
                 if (State != AllyState.FleeHazard) { State = AllyState.FleeHazard; hasPath = false; }
                 Steer(escape, commander.Settings3.allyRunSpeed, dt, true);
@@ -136,6 +150,9 @@ namespace GokiTakeover
                 case AllyState.DefendNest:
                     Steer(commander.NestPoint(slot, 1.25f), walk, dt, false, 0.3f);
                     break;
+                case AllyState.GoToTarget when CurrentOrder == Order.Route && Route != null:
+                    FollowRoute(dt);
+                    break;
                 case AllyState.GoToTarget:
                 {
                     // A capture keeps the group tight so even the outer ring stays inside the zone.
@@ -153,6 +170,23 @@ namespace GokiTakeover
                     Brake(dt);
                     break;
             }
+        }
+
+        private void FollowRoute(float dt)
+        {
+            var points = Route.Points;
+            if (RouteIndex >= points.Count) { EndRoute(); return; }
+            bool last = RouteIndex == points.Count - 1;
+            if (Steer(points[RouteIndex], commander.Settings3.allyRunSpeed, dt, true, last ? 0.35f : 0.5f)) { RouteIndex++; hasPath = false; }
+        }
+        // The end of the line: the food or zone it ends on, else the nearest cover.
+        private void EndRoute()
+        {
+            var route = Route;
+            Route = null;
+            if (route.Food && route.Food.State == FoodItem.FoodState.Available) { SetOrder(Order.Collect, Vector3.zero, route.Food); return; }
+            if (route.Zone >= 0 && commander.Zones != null && commander.Zones.ZoneOpen(route.Zone)) { SetCapture(commander.Zones.ZoneCentre(route.Zone), route.Zone); return; }
+            SetOrder(Order.Move, commander.NearestCover(Position));
         }
 
         private void Collect(float walk, float dt)
@@ -270,6 +304,7 @@ namespace GokiTakeover
                     if (scoutPoint >= 0) { skippedPoints.Add(scoutPoint); commander.ReleaseScout(scoutPoint, this); scoutPoint = -1; }
                     break;
                 case AllyState.FleeHazard: break;
+                case AllyState.GoToTarget when Route != null: RouteIndex++; break;   // a point it cannot reach: the next one
                 default:
                     State = AllyState.Idle;
                     commander.ReportUnreachable(this);
@@ -371,7 +406,7 @@ namespace GokiTakeover
                 switch (State)
                 {
                     case AllyState.FollowLeader: return "追従";
-                    case AllyState.GoToTarget: return CurrentOrder == Order.Rally ? "侵攻" : CurrentOrder == Order.Capture ? "占拠" : "移動";
+                    case AllyState.GoToTarget: return CurrentOrder == Order.Rally ? "侵攻" : CurrentOrder == Order.Capture ? "占拠" : CurrentOrder == Order.Route ? "ルート" : "移動";
                     case AllyState.Explore: return "探索";
                     case AllyState.CollectFood: return Carried ? "運搬" : "回収";
                     case AllyState.ReturnToNest: return "帰巣";

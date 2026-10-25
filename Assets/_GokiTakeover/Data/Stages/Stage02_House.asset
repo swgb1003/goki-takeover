@@ -53,6 +53,8 @@ MonoBehaviour:
     radius: 0.6
   holdSeconds: 15
   holdPresence: 3
+  holdBonusPerRoach: 0.5
+  holdBonusMax: 3
   residentClearRate: 0.5
   fearPerZone: 9
   startAllies: 0

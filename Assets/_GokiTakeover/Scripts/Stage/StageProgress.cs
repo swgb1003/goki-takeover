@@ -72,6 +72,9 @@ namespace GokiTakeover
         public bool AllGaugesFull => FoodGauge >= 1 && FearGauge >= 1 && TerritoryGauge >= 1;
         public int ZoneCount => stage.zones.Length;
         public float ZoneProgress(int index) => captured[index] ? 1 : Mathf.Clamp01(zoneTime[index] / stage.holdSeconds);
+        /// <summary>How fast a zone fills with this many roaches in it: 1 at the hold count, more with each one over it.</summary>
+        public float HoldRate(int roaches) => roaches < stage.holdPresence ? 0 : Mathf.Min(Mathf.Max(1, stage.holdBonusMax), 1 + (roaches - stage.holdPresence) * stage.holdBonusPerRoach);
+        public float ZoneRate(int index) => captured[index] || ResidentIn(index) ? 0 : HoldRate(presence[index]);
         public bool ZoneCaptured(int index) => captured[index];
         public int ZonePresence(int index) => presence[index];
         public bool ZoneContested(int index) => !captured[index] && ResidentIn(index);
@@ -130,6 +133,7 @@ namespace GokiTakeover
             commander.NestRefuge = nestRefuge;
             session.ReviveAt = nestRefuge;
             human.SearchWander = true;
+            commander.ClickOrders = true;   // the tactics view takes left clicks and drawn routes
             human.PatrolRandom = true;
             if (stage.residentHuntsAllies) human.ExtraPrey = commander;
             // Stage 2: the rest of the household hunts the same way; a harder house notices roaches sooner.
@@ -234,7 +238,7 @@ namespace GokiTakeover
                 if (captured[i]) continue;
                 bool resident = ResidentIn(i);
                 // Holding needs enough roaches and no resident in the zone; the resident alone slowly clears it.
-                if (n >= stage.holdPresence && !resident) zoneTime[i] += step;
+                if (n >= stage.holdPresence && !resident) zoneTime[i] += step * HoldRate(n);   // more roaches, faster
                 else if (resident && n == 0) zoneTime[i] = Mathf.Max(0, zoneTime[i] - stage.residentClearRate * step);
                 if (zoneTime[i] < stage.holdSeconds) continue;
                 captured[i] = true;
