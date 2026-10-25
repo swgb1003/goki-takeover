@@ -73,7 +73,7 @@ MonoBehaviour:
   nestFumigationWarning: 4.5
   nestFumigationSeconds: 15
   nestSmokeDamageEvery: 1.1
-  humanDetectionScale: 0.85
+  humanDetectionScale: 1.1
   humanSpeedScale: 1.08
   heatArea:
     serializedVersion: 2

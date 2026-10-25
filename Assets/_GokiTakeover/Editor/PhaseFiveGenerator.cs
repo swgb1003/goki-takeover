@@ -370,6 +370,10 @@ namespace GokiTakeover.Editor
         {
             var counter = GameObject.Find("KitchenCabinet").transform;
             var room = GameObject.Find("Room").transform;
+            // The fridge's base and top sit just inside its sides (their front and end faces shared a plane and flickered).
+            var fridge = GameObject.Find("OpenRefrigerator").transform;
+            foreach (var part in new[] { "Base", "Top" }) { var t = fridge.Find(part); t.localScale = new Vector3(2.28f, t.localScale.y, 1.98f); }
+            fridge.Find("Back").localScale = new Vector3(2.28f, 4.28f, fridge.Find("Back").localScale.z);
             var enamel = counter.Find("CabinetBody").GetComponent<MeshRenderer>().sharedMaterial;
             var black = counter.Find("ToeKick").GetComponent<MeshRenderer>().sharedMaterial;
             var metal = counter.Find("SinkRim").GetComponent<MeshRenderer>().sharedMaterial;
@@ -380,9 +384,10 @@ namespace GokiTakeover.Editor
 
             Solid(P.Box("CabinetSide", counter, new Vector3(-2.95f, 1.325f, 0), new Vector3(0.1f, 2.65f, 2.05f), enamel));
             Solid(P.Box("CabinetSide", counter, new Vector3(2.95f, 1.325f, 0), new Vector3(0.1f, 2.65f, 2.05f), enamel));
-            Solid(P.Box("CabinetBack", counter, new Vector3(0, 1.325f, 0.975f), new Vector3(6, 2.65f, 0.1f), enamel));
-            Solid(P.Box("CabinetDeck", counter, new Vector3(0, 2.6f, 0), new Vector3(6, 0.1f, 2.05f), enamel));
-            Solid(P.Box("FrontRail", counter, new Vector3(0, 2.565f, -1.0f), new Vector3(6, 0.17f, 0.1f), enamel));
+            // Back, deck and rail fit between the sides: faces in one plane with the sides' ends flickered (z-fighting).
+            Solid(P.Box("CabinetBack", counter, new Vector3(0, 1.32f, 0.975f), new Vector3(5.8f, 2.64f, 0.1f), enamel));
+            Solid(P.Box("CabinetDeck", counter, new Vector3(0, 2.6f, 0), new Vector3(5.8f, 0.1f, 2.05f), enamel));
+            Solid(P.Box("FrontRail", counter, new Vector3(0, 2.56f, -1.0f), new Vector3(5.8f, 0.16f, 0.1f), enamel));
             P.Box("InsideBack", counter, new Vector3(0, 1.3f, 0.92f), new Vector3(5.8f, 2.5f, 0.01f), inside, false);
             P.Box("InsideTop", counter, new Vector3(0, 2.545f, -0.04f), new Vector3(5.8f, 0.01f, 1.9f), inside, false);
             for (int s = -1; s <= 1; s += 2) P.Box("InsideSide", counter, new Vector3(s * 2.895f, 1.3f, -0.04f), new Vector3(0.01f, 2.5f, 1.9f), inside, false);
@@ -399,7 +404,7 @@ namespace GokiTakeover.Editor
                 if (i != 1)
                 {
                     Solid(door);
-                    Solid(P.Box("Plinth", counter, new Vector3(x, 0.18f, -0.95f), new Vector3(1.5f, 0.36f, 0.1f), black));
+                    Solid(P.Box("Plinth", counter, new Vector3(x, 0.18f, -0.95f), new Vector3(1.48f, 0.36f, 0.1f), black));
                     continue;
                 }
                 var hinge = GeneratedAssets.Empty("OpenDoorHinge", counter, new Vector3(x - 0.705f, 0, -1.055f));

@@ -116,7 +116,7 @@ namespace GokiTakeover
             yield return null; yield return null;
             Check(progress.Current == StageProgress.Phase.Invasion && session.IsRunning && progress.ZoneCount == 8 && colony.Allies == stage.startAllies, "侵略開始: 縄張り8区域（4部屋）・仲間 " + stage.startAllies + "匹");
             Check(mother.SearchWander && son.PatrolRandom && mother.ExtraPrey != null && son.ExtraPrey != null, "母と息子も部屋を巡回し、見失うと探し回り、仲間も狙う");
-            Check(Mathf.Approximately(mother.DetectionTimeScale, father.DetectionTimeScale) && father.DetectionTimeScale < 0.9f, "一軒家の家族は気づくのが早い（発見までの時間 x" + father.DetectionTimeScale.ToString("F2") + "）");
+            Check(Mathf.Approximately(mother.DetectionTimeScale, father.DetectionTimeScale) && Mathf.Approximately(father.DetectionTimeScale, stage.humanDetectionScale) && stage.humanDetectionScale < 1.25f, "一軒家の家族はステージ1より気づくのが早い（発見までの時間 x" + father.DetectionTimeScale.ToString("F2") + "）");
             Check(son.Agent.speed > father.Agent.speed * 1.1f || son.Agent.speed > 0, "息子は足が速い");
             Check(!son.Slaps && mother.Slaps && father.Slaps, "息子はスリッパを使わない（網だけ）");
             Check(cat && cat.Current == PetCat.Phase.Nap && Flat(cat.transform.position - new Vector3(9.3f, 0, 4.6f)).magnitude < 0.3f, "飼い猫は寝床でお昼寝から始まる");

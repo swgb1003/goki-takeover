@@ -101,6 +101,10 @@
 
 目視: [テレビ](Validation/Phase5/stage2/player/stage2-life-tv-720p.png)・[うたた寝](Validation/Phase5/stage2/player/stage2-life-doze-720p.png)・[料理](Validation/Phase5/stage2/player/stage2-life-cook-720p.png)・[ゲーム](Validation/Phase5/stage2/player/stage2-life-game-720p.png)・[宿題](Validation/Phase5/stage2/player/stage2-life-homework-720p.png)・[夕食](Validation/Phase5/stage2/player/stage2-life-dinner-720p.png)。撮影時 52〜60fps。目視で直した点: ソファで脚が座面に埋まる（座面の上に腰・膝を座面の前へ）、うたた寝の「Zzz」が吹き出しに隠れる（座面の上に表示）。
 
+## 修正（2026-10-25）: 家具のちらつき・人間の察知を少し弱く
+- 家具のちらつき（同じ平面に2枚の面が重なるz-fighting）を修正: 台所の流し台の箱（両端の側板と背板・天板・前の桟・台輪が同じ面に揃っていた。ステージ1にもあった）、冷蔵庫の台座・天板・背板、子ども部屋のおもちゃ棚の箱、リビングのプレイマットとラグ（2mm差）。Edit Mode検証に「家具に同じ面で重なる板がない」チェックを追加（ステージ1・2）。
+- ユーザー指示「人間のゴキ察知能力が高すぎるので抑える」: 発見までの時間の倍率をステージ1は 1.0→1.25、ステージ2は 0.85→1.1（`StageDefinition.humanDetectionScale`）。ステージ2は引き続きステージ1より気づくのが早い（0.75秒×1.1＝0.83秒、ステージ1は0.94秒）。警戒段階による短縮（警戒0.75倍・パニック0.7倍）と生活中の視野の狭さはそのまま。
+
 ## 未確認・既知の問題
 - 4人目の家族（人間）は作っていない（家族3人＋猫）。
 - 実際に通しで遊んでの難易度は未確認（自動テストは各攻撃・避難・クリアを個別に確認）。掃除機の強さ（`VacuumAttack` の PullNear/PullFar）、網の連打回数（`EscapePresses`）、各ゲージ目標（`Stage02_House.asset`）で調整できる。

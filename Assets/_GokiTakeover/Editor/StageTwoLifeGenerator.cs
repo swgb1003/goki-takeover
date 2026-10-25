@@ -211,7 +211,7 @@ namespace GokiTakeover.Editor
             Climb(P.Box("Body", shelf, new Vector3(0, 1.8f, 0), new Vector3(3.0f, 3.6f, 1.0f), ivory));
             var bins = new[] { red, blue, yellow };
             for (int row = 0; row < 3; row++)
-                for (int i = 0; i < 3; i++) P.Box("Bin", shelf, new Vector3(-0.95f + i * 0.95f, 0.5f + row * 1.15f, -0.47f), new Vector3(0.8f, 0.8f, 0.06f), bins[(i + row) % 3], false);
+                for (int i = 0; i < 3; i++) P.Box("Bin", shelf, new Vector3(-0.95f + i * 0.95f, 0.5f + row * 1.15f, -0.52f), new Vector3(0.8f, 0.8f, 0.06f), bins[(i + row) % 3], false);   // proud of the shelf front (not in its plane)
             P.Shadow("ShelfAO", kids, new Vector3(15.6f, 0.006f, 15.5f), new Vector2(3.5f, 1.6f), shadow);
             P.Box("Rug", kids, new Vector3(13.2f, 0.012f, 10.6f), new Vector3(6.0f, 0.02f, 4.2f), P.Material("Stage02_KidsRug", new Color(0.36f, 0.5f, 0.66f), 0.04f), false);
             P.Sphere("Ball", kids, new Vector3(15.0f, 0.4f, 8.2f), Vector3.one * 0.8f, red);

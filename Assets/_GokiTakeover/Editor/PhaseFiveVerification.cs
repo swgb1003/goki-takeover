@@ -37,11 +37,13 @@ namespace GokiTakeover.Editor
                     && stages[1].unlocks == stages[2].id, "ステージ定義3つ（1・2は遊べる・縄張り4区域と8区域、3は制作中、1のクリアで2・2のクリアで3を解放）");
                 Check(stages[1].foodGoal > stages[0].foodGoal && stages[1].fearGoal > stages[0].fearGoal && stages[1].holdPresence > stages[0].holdPresence && stages[1].holdSeconds > stages[0].holdSeconds
                     && stages[1].finalDefenceSeconds > stages[0].finalDefenceSeconds && stages[1].maxFoggers > stages[0].maxFoggers && stages[1].nestFumigations.Length > stages[0].nestFumigations.Length
-                    && stages[1].humanDetectionScale < 1 && stages[1].difficulty > stages[0].difficulty && !stages[1].tutorial,
-                    "ステージ2はすべてのゲージ・最終防衛でステージ1より難しい（食料 " + stages[1].foodGoal + "・恐怖 " + stages[1].fearGoal + "・区域 6×" + stages[1].holdPresence + "匹・防衛 " + stages[1].finalDefenceSeconds + "秒・発見 x" + stages[1].humanDetectionScale + "）");
+                    && stages[1].humanDetectionScale < stages[0].humanDetectionScale && stages[1].difficulty > stages[0].difficulty && !stages[1].tutorial,
+                    "ステージ2はすべてのゲージ・最終防衛でステージ1より難しい（食料 " + stages[1].foodGoal + "・恐怖 " + stages[1].fearGoal + "・区域 6×" + stages[1].holdPresence + "匹・防衛 " + stages[1].finalDefenceSeconds + "秒・発見までの時間 x" + stages[1].humanDetectionScale + "（ステージ1 x" + stages[0].humanDetectionScale + "））");
 
                 EditorSceneManager.OpenScene(PhaseFiveGenerator.StageScene);
                 Check(UnityEngine.Object.FindObjectsByType<Camera>(FindObjectsSortMode.None).Length == 1, "ステージ: 描画カメラ1台");
+                var flicker = Coplanar("KitchenCabinet", "OpenRefrigerator");
+                Check(flicker.Length == 0, "台所の家具に同じ面で重なってちらつく板がない" + (flicker.Length > 0 ? ": " + string.Join(" / ", flicker.Take(3)) : ""));
                 Check(UnityEngine.Object.FindObjectsByType<RoachMotor>(FindObjectsSortMode.None).Length == 1, "ステージ: 主人公1匹");
                 Check(UnityEngine.Object.FindObjectsByType<AllyRoach>(FindObjectsInactive.Include, FindObjectsSortMode.None).Length == 9, "ステージ: 仲間プール9匹");
                 Check(UnityEngine.Object.FindObjectsByType<StageProgress>(FindObjectsSortMode.None).Length == 1 && UnityEngine.Object.FindObjectsByType<ColonyManager>(FindObjectsSortMode.None).Length == 1, "ステージ進行・コロニー管理を1つずつ");
@@ -114,11 +116,52 @@ namespace GokiTakeover.Editor
             catch (Exception e) { Debug.LogException(e); File.WriteAllText(Output + "/editmode-failure.txt", e.ToString()); EditorApplication.Exit(1); }
         }
 
+        /// <summary>
+        /// Visible faces of two boxes of the same furniture lying in one plane and facing the same way (they flicker:
+        /// z-fighting). Walls, floors, ceilings, trim and skirting are left out (their overlaps sit inside the walls),
+        /// as are faces that only the floor (bottom) or the wall behind (back) could show.
+        /// </summary>
+        private static string[] Coplanar(params string[] roots)
+        {
+            string[] shell = { "Wall", "Floor", "Ceiling", "Skirting", "Facing", "DoorTrim", "Threshold", "Collider" };
+            var boxes = roots.Select(GameObject.Find).Where(r => r).SelectMany(r => r.GetComponentsInChildren<MeshRenderer>())
+                .Where(r => r.enabled && r.GetComponent<MeshFilter>() && r.GetComponent<MeshFilter>().sharedMesh && r.GetComponent<MeshFilter>().sharedMesh.name.Contains("Box")
+                    && !shell.Any(n => r.name.Contains(n)) && new[] { r.transform.right, r.transform.up, r.transform.forward }.All(d => Mathf.Max(Mathf.Abs(d.x), Mathf.Abs(d.y), Mathf.Abs(d.z)) > 0.999f))
+                .ToArray();
+            var cover = roots.Select(GameObject.Find).Where(r => r).SelectMany(r => r.GetComponentsInChildren<MeshRenderer>()).Where(r => r.enabled).ToArray();
+            var hits = new System.Collections.Generic.List<string>();
+            for (int i = 0; i < boxes.Length; i++)
+                for (int j = i + 1; j < boxes.Length; j++)
+                {
+                    Bounds a = boxes[i].bounds, b = boxes[j].bounds;
+                    for (int axis = 0; axis < 3; axis++)
+                        for (int side = 0; side < 2; side++)
+                        {
+                            if (axis == 1 && side == 0 || axis == 2 && side == 1) continue;   // bottom on the floor, back to the wall
+                            float pa = side == 0 ? a.min[axis] : a.max[axis], pb = side == 0 ? b.min[axis] : b.max[axis];
+                            if (Mathf.Abs(pa - pb) > 0.004f) continue;
+                            int u = (axis + 1) % 3, v = (axis + 2) % 3;
+                            float ou = Mathf.Min(a.max[u], b.max[u]) - Mathf.Max(a.min[u], b.min[u]), ov = Mathf.Min(a.max[v], b.max[v]) - Mathf.Max(a.min[v], b.min[v]);
+                            if (ou <= 0.02f || ov <= 0.02f || ou * ov <= 0.004f) continue;
+                            // Just outside the shared face: inside another part (the side panel, the worktop) it cannot be seen.
+                            Vector3 probe = Vector3.zero;
+                            probe[axis] = pa + (side == 0 ? -0.01f : 0.01f);
+                            probe[u] = (Mathf.Max(a.min[u], b.min[u]) + Mathf.Min(a.max[u], b.max[u])) / 2;
+                            probe[v] = (Mathf.Max(a.min[v], b.min[v]) + Mathf.Min(a.max[v], b.max[v])) / 2;
+                            if (cover.Any(c => c != boxes[i] && c != boxes[j] && c.bounds.Contains(probe))) continue;
+                            hits.Add(boxes[i].transform.parent.name + "/" + boxes[i].name + "×" + boxes[j].name + " " + "xyz"[axis]);
+                        }
+                }
+            return hits.Distinct().ToArray();
+        }
+
         private static void VerifyStageTwo(StageDefinition stage)
         {
             EditorSceneManager.OpenScene(StageTwoGenerator.ScenePath);
             Check(Path.GetFileNameWithoutExtension(StageTwoGenerator.ScenePath) == stage.sceneName && new SerializedObject(UnityEngine.Object.FindFirstObjectByType<StageProgress>()).FindProperty("stage").objectReferenceValue == AssetDatabase.LoadAssetAtPath<StageDefinition>(PhaseFiveGenerator.StageAssets[1]), "ステージ2のシーン名が定義と一致・進行がステージ2の定義を参照");
             Check(UnityEngine.Object.FindObjectsByType<Camera>(FindObjectsSortMode.None).Length == 1 && UnityEngine.Object.FindObjectsByType<RoachMotor>(FindObjectsSortMode.None).Length == 1, "ステージ2: カメラ1台・主人公1匹");
+            var flicker = Coplanar("KitchenCabinet", "OpenRefrigerator", "LivingRoom", "Bedroom", "KidsRoom");
+            Check(flicker.Length == 0, "一軒家の家具に同じ面で重なってちらつく板がない" + (flicker.Length > 0 ? ": " + string.Join(" / ", flicker.Take(3)) : ""));
             var session = UnityEngine.Object.FindFirstObjectByType<PhaseTwoSession>();
             var humans = UnityEngine.Object.FindObjectsByType<HumanAIController>(FindObjectsSortMode.None);
             Check(humans.Length == 3 && session.Family.Count == 2 && session.Human.Label == "父" && session.Family[0].Label == "母" && session.Family[1].Label == "息子"

@@ -888,7 +888,8 @@ namespace GokiTakeover
                 yield return new WaitForSeconds(0.1f);
                 float step = Flat(human.transform.position - was).magnitude; was = human.transform.position;
                 moved += step;
-                still = step < 0.02f ? still + 0.1f : 0;
+                // Only the search counts: a glimpse of an ally on the way starts a short chase of its own.
+                still = step < 0.02f && human.State == HumanAIController.HumanState.Search ? still + 0.1f : 0;
                 if (still > longest) { longest = still; stillAt = (i + 1) * 0.1f; stillState = human.State + (agent.hasPath ? " path " + agent.remainingDistance.ToString("F1") : " nopath") + (agent.isStopped ? " stopped" : ""); }
             }
             Check(moved > 2f && longest < 1.3f, "見失った後は立ち止まらず、最後に見た辺りを歩き回って探す（4秒で " + moved.ToString("F1") + "m、最長停止 " + longest.ToString("F1") + "秒 @" + stillAt.ToString("F1") + " " + stillState + "）");

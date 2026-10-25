@@ -50,6 +50,7 @@ MonoBehaviour:
   foggerRadius: 3
   smokeHeight: 2.4
   maxFoggers: 2
+  humanDetectionScale: 1.25
   exitPoint: {x: 6.2, y: 0, z: -3.6}
   parSeconds: 720
   fewDiscoveries: 3

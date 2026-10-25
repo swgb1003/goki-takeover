@@ -287,7 +287,7 @@ namespace GokiTakeover.Editor
             stage.residentHuntsAllies = true; stage.allyReactionSeconds = 0.85f; stage.allyStunSeconds = 1.6f; stage.allyWoundHealSeconds = 35;
             stage.allyAlarmRadius = 2.0f; stage.allyCollectReactionScale = 1.6f;
             stage.nestFumigations = new[] { 8f, 30f, 55f }; stage.nestFumigationWarning = 4.5f; stage.nestFumigationSeconds = 15; stage.nestSmokeDamageEvery = 1.1f;
-            stage.humanDetectionScale = 0.85f; stage.humanSpeedScale = 1.08f; stage.heatArea = HouseArea; stage.familyLeavesForDefence = true; stage.calmSeconds = 60;
+            stage.humanDetectionScale = 1.1f; stage.humanSpeedScale = 1.08f; stage.heatArea = HouseArea; stage.familyLeavesForDefence = true; stage.calmSeconds = 60;
             stage.finalDefenceSeconds = 80; stage.foggerInterval = 11; stage.foggerWarning = 3.2f; stage.foggerDuration = 9; stage.foggerRadius = 3.0f; stage.maxFoggers = 3;
             stage.exitPoint = ExitPoint;
             stage.parSeconds = 1080; stage.fewDiscoveries = 4; stage.someDiscoveries = 10; stage.manyAllies = 8; stage.someAllies = 5;
@@ -408,7 +408,7 @@ namespace GokiTakeover.Editor
             var red = P.Material("Stage02_ToyRed", new Color(0.78f, 0.12f, 0.1f), 0.5f);
             var blue = P.Material("Stage02_ToyBlue", new Color(0.12f, 0.32f, 0.72f), 0.5f);
             var yellow = P.Material("Stage02_ToyYellow", new Color(0.92f, 0.72f, 0.1f), 0.5f);
-            P.Box("PlayMat", living, new Vector3(18.4f, 0.01f, -3.0f), new Vector3(4.0f, 0.02f, 3.4f), P.Material("Stage02_PlayMat", new Color(0.35f, 0.62f, 0.55f), 0.1f), false);
+            P.Box("PlayMat", living, new Vector3(18.4f, 0.03f, -3.0f), new Vector3(4.0f, 0.02f, 3.4f), P.Material("Stage02_PlayMat", new Color(0.35f, 0.62f, 0.55f), 0.1f), false);
             var toybox = GeneratedAssets.Empty("ToyBox", living, new Vector3(19.4f, 0, -4.9f));
             Climb(P.Box("Box", toybox, new Vector3(0, 0.65f, 0), new Vector3(2.0f, 1.3f, 1.3f), blue));
             P.Box("Lid", toybox, new Vector3(0, 1.34f, -0.1f), new Vector3(2.05f, 0.1f, 1.35f), yellow, false).localRotation = Quaternion.Euler(-14, 0, 0);
