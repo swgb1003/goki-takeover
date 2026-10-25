@@ -16,7 +16,8 @@ namespace GokiTakeover
         public enum Sfx
         {
             Click, Focus, Pickup, Deliver, Breed, Capture, Order, Discovered, Warning, Whoosh, SlipperHit,
-            Hurt, AllyDeath, Spray, Fogger, Eat, Clear, Defeat, Siren
+            Hurt, AllyDeath, Spray, Fogger, Eat, Clear, Defeat, Siren,
+            CatMeow, CatHiss
         }
         [SerializeField] private PhaseTwoSession session;
         [SerializeField] private SwarmCommander commander;
@@ -35,6 +36,8 @@ namespace GokiTakeover
         private HumanAIController.HumanState[] humanStates;
         private bool[] swings;
         private int attackPhases;
+        private PetCat pet;
+        private PetCat.Phase petPhase;
         private PhaseTwoSession.RunState runState;
         private StageProgress.Phase phase;
         private SmokeFogger.Phase[] fogger;
@@ -59,6 +62,7 @@ namespace GokiTakeover
             for (int i = 0; i < clips.Length; i++) clips[i] = Build((Sfx)i);
             steps.clip = Skitter();
             if (session) for (int i = 0; i < session.HumanCount; i++) session.HumanAt(i).SlipperLanding += OnSlipperLanding;
+            if (session) pet = FindFirstObjectByType<PetCat>();
         }
         private void OnDestroy()
         {
@@ -134,6 +138,16 @@ namespace GokiTakeover
                 swings[i] = swing;
             }
             if (progress) HouseholdSounds();
+            if (pet)
+            {
+                if (pet.Current != petPhase)
+                {
+                    if (pet.Current == PetCat.Phase.Stalk && pet.TargetIsPlayer) Play(Sfx.CatMeow, 0.8f);
+                    else if (pet.Current == PetCat.Phase.Crouch) Play(Sfx.Warning, 0.7f);
+                    else if (pet.Current == PetCat.Phase.Leap) Play(Sfx.CatHiss, 0.8f);
+                }
+                petPhase = pet.Current;
+            }
             if (reaction)
             {
                 var spray = reaction.Spray;
@@ -232,6 +246,8 @@ namespace GokiTakeover
                     for (int k = 0; k < 3; k++) Add(s, Filtered(Noise(0.05f, 0.6f, 0), 0.3f, 0.3f, false), (int)(Rate * 0.09f * k));
                     break;
                 case Sfx.Clear: s = Notes(new[] { 523f, 659f, 784f, 1047f, 1047f }, 0.13f, Wave.Triangle, 0.5f, 0.6f); break;
+                case Sfx.CatMeow: s = Tone(0.16f, 560, 940, Wave.Triangle, 0.38f); Add(s, Tone(0.34f, 940, 470, Wave.Triangle, 0.38f), (int)(Rate * 0.14f)); break;
+                case Sfx.CatHiss: s = Filtered(Noise(0.45f, 0.5f, 0.1f), 0.5f, 0.5f, true); break;
                 case Sfx.Defeat: s = Notes(new[] { 392f, 330f, 262f, 196f }, 0.2f, Wave.Triangle, 0.45f, 0.4f); break;
                 default:   // Siren
                     s = new float[(int)(Rate * 1.4f)];

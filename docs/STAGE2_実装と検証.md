@@ -1,6 +1,6 @@
 # ステージ2「一軒家」 実装と検証（2026-10-25）
 
-ステージ1「ワンルームのキッチン」をクリアすると出撃できる2つ目のステージ。仕様書 9.1 の「4人家族の一軒家（複数部屋・複数人・ペット）」のうち、**複数部屋・複数人**を実装した（ペットは未実装）。ユーザー指示「ステージ1より確実に難しく」「人間の新しいモデル」「さらに面白い攻撃」に対応。
+ステージ1「ワンルームのキッチン」をクリアすると出撃できる2つ目のステージ。仕様書 9.1 の「4人家族の一軒家（複数部屋・複数人・ペット）」の**複数部屋・複数人・ペット（飼い猫）**を実装した（人間は3人）。ユーザー指示「ステージ1より確実に難しく」「人間の新しいモデル」「さらに面白い攻撃」に対応。
 
 ## 内容
 
@@ -62,8 +62,17 @@
 
 目視: [リビング](Validation/Phase5/stage2/player/stage2-living-720p.png)・[掃除機の予告](Validation/Phase5/stage2/player/stage2-vacuum-aim-720p.png)・[吸い込み](Validation/Phase5/stage2/player/stage2-vacuum-suck-720p.png)・[虫取り網の予告](Validation/Phase5/stage2/player/stage2-net-windup-720p.png)・[網に捕まった](Validation/Phase5/stage2/player/stage2-net-caught-720p.png)・[虫かご](Validation/Phase5/stage2/player/stage2-cage-720p.png)・[出撃前説明](Validation/Phase5/stage2/player/stage2-briefing-720p.png)・[ステージ選択](Validation/Phase5/stage2/player/stage2-select-720p.png)・[クリア](Validation/Phase5/stage2/player/stage2-clear-720p.png)。撮影時 53〜60fps（Development Player、1280×720）。`Build/GokiTakeover` を上書き更新。
 
+## 追加（2026-10-25）: 飼い猫「ミケ」
+- **モデル**: `Tools/Blender/build_cat_model.py`（新規）。三毛猫（白・茶・黒のまだら）、緑の目、赤い首輪と鈴。専用の骨格（背骨・首・頭・4本の脚各3本・しっぽ4本、計22本）、3段階LOD（約11,700三角形）。編集元 `ArtSource/Blender/GokiTakeover_Cat.blend`、プレビュー `cat-side.png` など。
+- **動き**（`CatAnimator`、手続き的）: 対角の速歩、低く構えた忍び足としっぽの先のぴくぴく、飛びかかる前にお尻を振る、伸び切ったジャンプ、座って毛づくろい、丸まって昼寝（呼吸）。
+- **行動**（`PetCat`）: ソファ横の寝床で昼寝 → 家の中をうろうろ → 疲れたら寝床へ。床を**動いている**ゴキブリ（主人公・仲間）が見えると興味がたまり、忍び寄る（「猫に見つかった！ 止まればやり過ごせる」）。2.8m以内で相手が動いていれば、**橙の輪**（半径0.95）で0.8秒予告してから飛びかかる。輪の中の主人公はダメージ1、仲間はスリッパと同じ（1回目はひっくり返る）。**止まっていると飛びかからず、興味をなくす。** 家具の下・壁・天井・家具の上・巣の中は見えない・届かない。寝ている時は1.8m以内で動くと目を覚ます。
+- 猫専用の床グリッド（`Data/Stage02CatGrid.asset`、猫の大きさで判定）: ソファ・ローテーブルの下と巣（流し台下）には入れない。
+- 最終防衛で家族と一緒に避難。リプレイで寝床に戻る。図鑑「人間」に「飼い猫ミケ」。効果音: 見つけた時の鳴き声・飛びかかる時の「シャー」（合成音）。HUD: 警告バナー、昼寝中は「Zzz」、軍団モードで「▲ 猫・忍び寄り」など。出撃前説明・ステージ選択の危険一覧に追加。
+- テストで見つけて直した不具合: 停止中の主人公に飛びかかることがあった（飛びかかりは動いている時だけに統一）。人間のAIが止まっている間も古い状態のまま網・掃除機が発動していた（動作中の人間だけ攻撃するよう修正）。
+- 検証: Edit Mode 62項目、ステージ2 Play Mode 51項目・Development Player 53項目（2回）、ステージ1 125項目（Play Mode・Player）、回帰 Phase 4 58・Phase 3 58・Blender 39・Phase 2 38 PASS。目視: [猫が忍び寄る](Validation/Phase5/stage2/player/stage2-cat-stalk-720p.png)・[飛びかかる予告](Validation/Phase5/stage2/player/stage2-cat-pounce-720p.png)。
+
 ## 未確認・既知の問題
-- **ペット（仕様書の「ペット」）と4人目の家族は未実装。** 次の候補。
+- 4人目の家族（人間）は作っていない（家族3人＋猫）。
 - 実際に通しで遊んでの難易度は未確認（自動テストは各攻撃・避難・クリアを個別に確認）。掃除機の強さ（`VacuumAttack` の PullNear/PullFar）、網の連打回数（`EscapePresses`）、各ゲージ目標（`Stage02_House.asset`）で調整できる。
 - 母と息子の顔は住人の顔の形を元にしている（髪型・肌色・服で描き分け）。
 - ステージ2のフレームレートは撮影時の表示のみで、ステージ1のような30秒計測は未実施。

@@ -276,6 +276,7 @@ namespace GokiTakeover
                 case "slipper": return "スリッパ";
                 case "mother": return "一軒家の母";
                 case "son": return "一軒家の息子";
+                case "cat": return "飼い猫ミケ";
                 case "sticky": return "粘着シート";
                 case "spray": return "殺虫スプレー";
                 case "bait": return "毒餌";

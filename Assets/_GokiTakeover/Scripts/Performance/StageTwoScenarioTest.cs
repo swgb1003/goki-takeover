@@ -27,6 +27,7 @@ namespace GokiTakeover
         private HumanAIController father, mother, son;
         private VacuumAttack vacuum;
         private BugNetAttack net;
+        private PetCat cat;
         private Camera view;
 
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.BeforeSceneLoad)]
@@ -106,6 +107,7 @@ namespace GokiTakeover
             colony = FindFirstObjectByType<ColonyManager>();
             father = session.Human; mother = session.Family[0]; son = session.Family[1];
             vacuum = mother.GetComponent<VacuumAttack>(); net = son.GetComponent<BugNetAttack>();
+            cat = FindFirstObjectByType<PetCat>();
             var stage = progress.Stage;
             Check(stage.id == "stage02" && progress.Current == StageProgress.Phase.Briefing && session.State == PhaseTwoSession.RunState.Paused, "一軒家: 出撃前のミッション説明");
             Check(session.HumanCount == 3 && father.Label == "父" && mother.Label == "母" && son.Label == "息子", "人間は3人（父・母・息子）");
@@ -117,6 +119,7 @@ namespace GokiTakeover
             Check(Mathf.Approximately(mother.DetectionTimeScale, father.DetectionTimeScale) && father.DetectionTimeScale < 0.9f, "一軒家の家族は気づくのが早い（発見までの時間 x" + father.DetectionTimeScale.ToString("F2") + "）");
             Check(son.Agent.speed > father.Agent.speed * 1.1f || son.Agent.speed > 0, "息子は足が速い");
             Check(!son.Slaps && mother.Slaps && father.Slaps, "息子はスリッパを使わない（網だけ）");
+            Check(cat && cat.Current == PetCat.Phase.Nap && Flat(cat.transform.position - new Vector3(9.3f, 0, 4.6f)).magnitude < 0.3f, "飼い猫は寝床でお昼寝から始まる");
 
             // Everyone frozen for the scripted parts.
             FreezeAll();
@@ -250,6 +253,52 @@ namespace GokiTakeover
             son.enabled = false; net.Stop();
             yield return null;
 
+            // ---- The house cat ----
+            PlaceHuman(son, new Vector3(19.0f, 0, 3.0f), 180); PlaceHuman(mother, new Vector3(3.0f, 0, 2.0f), 180);   // out of the cat's sight line
+            cat.DebugWander();
+            cat.DebugPlace(new Vector3(11.0f, 0, -1.0f), 90);
+            Place(new Vector3(14.0f, 0, -1.0f));
+            Check(cat.Targetable(-1) && cat.Visible(-1), "猫から床の主人公が見える");
+            Place(new Vector3(15.5f, 0, 1.4f));
+            Check(!cat.Targetable(-1), "ローテーブルの下（家具の下）は猫から見えない");
+            Place(new Vector3(16.0f, 0, -1.0f));   // out of pouncing range while it creeps closer
+            // Wiggle on the spot so the cat sees it move (the scripted player has no input of its own).
+            float notice = Time.realtimeSinceStartup + 3;
+            while (cat.Current != PetCat.Phase.Stalk && Time.realtimeSinceStartup < notice)
+            {
+                if (cat.Current == PetCat.Phase.Wander) cat.DebugPlace(new Vector3(11.0f, 0, -1.0f), 90);   // keep it looking this way
+                motor.MovementEnabled = true;   // the session holds input while the window has no cursor lock (batch mode)
+                motor.SimulateMove(new Vector2(Mathf.Sin(Time.time * 9) * 0.6f, 0), false, Time.deltaTime);
+                yield return null;
+            }
+            motor.SimulateMove(Vector2.zero, false, Time.deltaTime);
+            Check(cat.Current == PetCat.Phase.Stalk && cat.TargetIsPlayer, "動く主人公を見つけた猫が忍び寄る");
+            if (playerRun) { ShowFrom(new Vector3(15.6f, 2.0f, -3.6f), new Vector3(12.0f, 0.6f, -0.6f)); yield return Capture("stage2-cat-stalk-720p.png"); }
+            yield return WaitFor(() => cat.Current != PetCat.Phase.Stalk, 4);
+            Check(cat.Current == PetCat.Phase.Wander && cat.LostInterest == 1 && session.Hp > 0, "止まっていると猫は興味をなくす（飛びかからない）");
+            hp = session.Hp;
+            Place(new Vector3(13.0f, 0, -1.0f));
+            cat.DebugPounce(new Vector3(13.0f, 0, -1.0f));
+            yield return null;
+            Check(cat.Current == PetCat.Phase.Crouch && cat.InRing(motor.FootPoint), "飛びかかる前に橙の輪で予告（お尻を振る）");
+            if (playerRun) { yield return new WaitForSeconds(PetCat.CrouchSeconds * 0.5f); ShowFrom(new Vector3(15.4f, 2.2f, -3.4f), new Vector3(12.4f, 0.6f, -0.8f)); yield return Capture("stage2-cat-pounce-720p.png"); }
+            yield return WaitFor(() => cat.Current == PetCat.Phase.Recover, 3);
+            Check(cat.PlayerHits == 1 && session.Hp == hp - 1, "輪の中にいると飛びかかられてダメージ");
+            yield return new WaitForSeconds(1.4f);
+            hp = session.Hp;
+            cat.DebugPounce(new Vector3(13.0f, 0, -1.0f));
+            Place(new Vector3(13.0f, 0, -3.2f));
+            yield return WaitFor(() => cat.Current == PetCat.Phase.Recover, 3);
+            Check(cat.PlayerHits == 1 && session.Hp == hp, "輪の外へ逃げればかわせる");
+            var kitten = commander.AddAlly();
+            kitten.Spawn(new Vector3(12.0f, 0, 1.0f + -2.0f), 0);
+            cat.DebugPounce(kitten.Position);
+            yield return new WaitForSeconds(PetCat.AllyNotice + 0.05f);
+            Check(commander.Threatened(kitten.Position, out escape) && !cat.InRing(escape), "仲間は少し遅れて輪の外へ逃げる");
+            yield return WaitFor(() => cat.Current == PetCat.Phase.Recover, 3);
+            Check(kitten.Stunned && cat.AllyHits == 1, "逃げ遅れた仲間は猫パンチでひっくり返る（スリッパと同じ）");
+            yield return null;
+
             // ---- Final defence: the family leaves, the father becomes the exterminator ----
             colony.DebugGrant(0);
             for (int i = 0; i < progress.ZoneCount; i++) progress.DebugCapture(i);
@@ -265,6 +314,9 @@ namespace GokiTakeover
             mother.Agent.Warp(stage.exitPoint + Vector3.left * 0.3f); son.Agent.Warp(stage.exitPoint + Vector3.left * 0.4f);
             yield return WaitFor(() => progress.FamilyGone, 14);
             Check(progress.FamilyGone && session.HumanCount == 3 && !session.HumanPresent(1) && !session.HumanPresent(2), "家族は廊下へ出ていく（残るのは業者だけ）");
+            cat.DebugPlace(stage.exitPoint + Vector3.left * 0.5f, 90);
+            yield return WaitFor(() => cat.Current == PetCat.Phase.Gone, 12);
+            Check(cat.Current == PetCat.Phase.Gone, "猫も家族と一緒に避難する");
             Check(!progress.ZoneContested(4), "いなくなった家族は区域を止めない");
             progress.DebugFinishDefence();
             yield return WaitFor(() => progress.Current == StageProgress.Phase.Cleared, 12);
@@ -275,6 +327,7 @@ namespace GokiTakeover
             progress.RestartStage();
             yield return null; yield return null;
             Check(session.HumanPresent(1) && session.HumanPresent(2) && vacuum.Allowed && net.Allowed && !mother.Suspended, "リプレイで家族は家に戻る（掃除機・網も使える）");
+            Check(cat.Current == PetCat.Phase.Nap && cat.Pounces == 0, "リプレイで猫も寝床に戻る");
         }
 
         private void FreezeAll()

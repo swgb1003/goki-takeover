@@ -164,7 +164,7 @@ namespace GokiTakeover
             }
             Check(dressed, "食料はすべてBlenderで作ったモデル（種類ごと: パンくず・米粒・クッキー・骨付きチキン・バナナの皮）");
             var viewer = FindFirstObjectByType<CodexViewer>();
-            Check(viewer && viewer.Count == 9 && !viewer.Rendering && FindObjectsByType<Camera>(FindObjectsSortMode.None).Length == 1, "図鑑の回転台は開くまでカメラを作らない");
+            Check(viewer && viewer.Count == 10 && !viewer.Rendering && FindObjectsByType<Camera>(FindObjectsSortMode.None).Length == 1, "図鑑の回転台は開くまでカメラを作らない");
             viewer.Show((int)FoodValue.Kind.Leftovers, false);
             float yaw = viewer.Yaw;
             viewer.Drag(new Vector2(-100, 0));

@@ -354,7 +354,7 @@ namespace GokiTakeover.Editor
             // The five foods (by FoodValue.Kind), then the resident, the exterminator and the Stage 2 mother and son (CodexModelPage indexes).
             var family = FamilyModelIntegration.Actors.Select(a => FamilyModelIntegration.Import(a)[0]);
             var models = art.foods.Concat(new[] { ExterminatorModelIntegration.ResidentMeshes()[0],
-                AssetDatabase.LoadAssetAtPath<Mesh>(BlenderModelIntegration.Root + "/Meshes/Exterminator_Detail0.asset") }).Concat(family).ToArray();
+                AssetDatabase.LoadAssetAtPath<Mesh>(BlenderModelIntegration.Root + "/Meshes/Exterminator_Detail0.asset") }).Concat(family).Concat(new[] { StageTwoGenerator.CatModel() }).ToArray();
             viewer.Configure(models, art.material, Disc(), GeneratedAssets.Material("Phase5_CodexPlinth", new Color(0.13f, 0.14f, 0.11f)));
             return viewer;
         }
