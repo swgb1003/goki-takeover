@@ -51,6 +51,15 @@ namespace GokiTakeover
         public AllyRoute Route { get; private set; }
         public int RouteIndex { get; private set; }
         public bool OnRoute => Route != null && CurrentOrder == Order.Route && State == AllyState.GoToTarget;
+        // A route drawn for it but not started yet: it holds its spot until the player confirms (決定). Any other
+        // order cancels it.
+        public AllyRoute PendingRoute { get; private set; }
+        public void HoldForRoute(AllyRoute route)
+        {
+            if (IsDead || route == null) return;
+            SetOrder(Order.Move, Position);
+            PendingRoute = route;
+        }
 
         public void Configure(CockroachVisualController legs, Transform anchor, Transform model)
         { visual = legs; carryAnchor = anchor; body = model; }
@@ -76,10 +85,11 @@ namespace GokiTakeover
 
         public void SetOrder(Order order, Vector3 point, FoodItem food = null)
         {
-            if (State == AllyState.Disabled || State == AllyState.Stunned) { CurrentOrder = order; orderPoint = point; CaptureZone = -1; return; }
+            if (State == AllyState.Disabled || State == AllyState.Stunned) { CurrentOrder = order; orderPoint = point; CaptureZone = -1; PendingRoute = null; return; }
             CurrentOrder = order;
             orderPoint = point;
             CaptureZone = -1;
+            PendingRoute = null;
             if (order != Order.Route) Route = null;
             hasPath = false;
             unreachable.Clear(); skippedPoints.Clear();
@@ -152,6 +162,10 @@ namespace GokiTakeover
                     break;
                 case AllyState.GoToTarget when CurrentOrder == Order.Route && Route != null:
                     FollowRoute(dt);
+                    break;
+                case AllyState.GoToTarget when PendingRoute != null:
+                    // Waiting for 決定: keeps to its own spot (no formation shuffle, back again when jostled).
+                    Steer(orderPoint, walk, dt, false, 0.15f);
                     break;
                 case AllyState.GoToTarget:
                 {
@@ -406,7 +420,7 @@ namespace GokiTakeover
                 switch (State)
                 {
                     case AllyState.FollowLeader: return "追従";
-                    case AllyState.GoToTarget: return CurrentOrder == Order.Rally ? "侵攻" : CurrentOrder == Order.Capture ? "占拠" : CurrentOrder == Order.Route ? "ルート" : "移動";
+                    case AllyState.GoToTarget: return CurrentOrder == Order.Rally ? "侵攻" : CurrentOrder == Order.Capture ? "占拠" : CurrentOrder == Order.Route ? "ルート" : PendingRoute != null ? "決定待ち" : "移動";
                     case AllyState.Explore: return "探索";
                     case AllyState.CollectFood: return Carried ? "運搬" : "回収";
                     case AllyState.ReturnToNest: return "帰巣";

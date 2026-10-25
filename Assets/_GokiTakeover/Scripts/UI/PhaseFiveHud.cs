@@ -38,6 +38,7 @@ namespace GokiTakeover
         private static readonly string[] OrderHelp = { "食料を集めて巣へ運ぶ", "未調査の場所を調べる", "巣のまわりで待機", "区域へ分かれて占領" };
         private static readonly string[] OrderGlyph = { "◆", "◎", "■", "□" };
         private const int CaptureButton = 3;
+        private static readonly Rect LaunchPanel = new Rect(880, 500, 370, 56);
         private const float OrderWidth = 296, OrderStep = 308;
         private static Rect OrderRect(int index) => new Rect(30 + index * OrderStep, 598, OrderWidth, 88);
         // Tutorial guide: top centre in the normal view, above the order bar in the tactics view (right-aligned
@@ -71,7 +72,7 @@ namespace GokiTakeover
         {
             Layout();
             var p = new Vector2((screen.x - offsetX) / scale, (Screen.height - screen.y - offsetY) / scale);
-            return CommandBar.Contains(p) || new Rect(30, 24, 340, 80).Contains(p) || new Rect(560, 24, 690, 70).Contains(p) || new Rect(1030, 104, 220, 104).Contains(p)
+            return CommandBar.Contains(p) || (commander && commander.ClickOrders && commander.PendingRoutes.Count > 0 && LaunchPanel.Contains(p)) || new Rect(30, 24, 340, 80).Contains(p) || new Rect(560, 24, 690, 70).Contains(p) || new Rect(1030, 104, 220, 104).Contains(p)
                 || (Guiding && TacticsGuide.Contains(p));
         }
         private void Layout()
@@ -400,8 +401,17 @@ namespace GokiTakeover
             Stat(new Rect(1112, 30, 130, 60), "？ 調査", commander.ScoutedCount + " / " + commander.ScoutPoints.Count, danger == "高" ? Orange : Cream);
 
             int chosen = commander.SelectedCount;
-            GUI.Label(new Rect(34, 566, 1220, 24), (chosen > 0 ? "選択 " + chosen + "匹" : "選択なし＝全員") + "   左クリック: 仲間＝選ぶ/外す  食料・区域・床＝指示   ドラッグ: ルート   Q 全員  X 解除  F 追従  Space 視点", small);
+            GUI.Label(new Rect(34, 566, 1220, 24), (chosen > 0 ? "選択 " + chosen + "匹" : "選択なし＝全員") + "   左クリック: 仲間＝選ぶ/外す  食料・区域・床＝指示   ドラッグ: ルート  Enter 決定   Q 全員  X 解除  F 追従  Space 視点", small);
             for (int i = 0; i < Orders.Length; i++) OrderButton(OrderRect(i), i, commander.ActiveAllyCount > 0);
+            // Routes wait for 決定: one button starts them all together (the decoys and the capture team at once).
+            int waiting = 0;
+            foreach (var route in commander.PendingRoutes) waiting += commander.PendingCount(route);
+            if (waiting > 0)
+            {
+                Panel(LaunchPanel, Lime);
+                if (Button(new Rect(LaunchPanel.x + 8, LaunchPanel.y + 6, 240, 44), "▶ 決定  ルート開始（" + waiting + "匹）", true, true)) commander.LaunchRoutes();
+                if (Secondary(new Rect(LaunchPanel.x + 256, LaunchPanel.y + 6, 106, 44), "取消")) commander.CancelRoutes();
+            }
             SpeechBubble();
             if (Guiding)
             {
@@ -442,6 +452,7 @@ namespace GokiTakeover
         private void RouteLines(Camera view)
         {
             foreach (var route in commander.ActiveRoutes) Dotted(route.Points, view, new Color(Cream.r, Cream.g, Cream.b, 0.8f), route.EndLabel);
+            foreach (var route in commander.PendingRoutes) Dotted(route.Points, view, Lime, "決定待ち " + commander.PendingCount(route) + "匹・" + route.EndLabel);
             if (commander.DrawingRoute) Dotted(commander.RouteDraft, view, Lime, null);
         }
         private void Dotted(System.Collections.Generic.IReadOnlyList<Vector3> points, Camera view, Color color, string end)
@@ -455,7 +466,7 @@ namespace GokiTakeover
             if (end != null && points.Count > 0 && ToGui(points[points.Count - 1], view, out Vector2 e))
             {
                 Fill(new Rect(e.x - 5, e.y - 5, 10, 10), color);
-                Shadowed(new Rect(e.x + 9, e.y - 10, 120, 20), "→ " + end, tiny, color);
+                Shadowed(new Rect(e.x + 9, e.y - 10, 240, 20), "→ " + end, tiny, color);
             }
         }
 
@@ -662,7 +673,7 @@ namespace GokiTakeover
                 GUI.Label(new Rect(832, 100 + i * step, 390, 26), dangers[i], small);
             }
             GUI.Label(new Rect(816, 350, 300, 30), "操作", big);
-            GUI.Label(new Rect(816, 388, 400, 200), "WASD 移動   Shift 走る   E 回収・納品・巣・死体\n壁へ進み続けて登る   Space 降りる\nTab 軍団モード（時間は止まらない）\n1 回収  2 探索  3 防衛  5 占拠\nF 見える仲間を呼ぶ（長押し 全員）\n軍団: 左クリック 選ぶ・指示  ドラッグ ルート\nEsc ポーズ" + (Household ? "\nSpace 連打  虫取り網から脱出" : ""), small);
+            GUI.Label(new Rect(816, 388, 400, 200), "WASD 移動   Shift 走る   E 回収・納品・巣・死体\n壁へ進み続けて登る   Space 降りる\nTab 軍団モード（時間は止まらない）\n1 回収  2 探索  3 防衛  5 占拠\nF 見える仲間を呼ぶ（長押し 全員）\n軍団: 左クリック 選ぶ・指示  ドラッグ ルート（Enter 決定）\nEsc ポーズ" + (Household ? "\nSpace 連打  虫取り網から脱出" : ""), small);
 
             bool resume = GameFlow.ResumeRequested && progress.HasCheckpoint;
             if (resume)

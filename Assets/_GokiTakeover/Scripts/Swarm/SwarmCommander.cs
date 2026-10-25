@@ -86,6 +86,7 @@ namespace GokiTakeover
         private List<Vector3> cover;
         public IReadOnlyList<Vector3> RouteDraft => draft;
         public bool DrawingRoute { get; private set; }
+        private readonly List<AllyRoute> pending = new List<AllyRoute>();
         public int RoutesIssued { get; private set; }
         public float AllyCorpseSeconds { get; set; }
         public int AllyDeaths { get; private set; }
@@ -193,6 +194,7 @@ namespace GokiTakeover
             if (Mode != ViewMode.Swarm) return;
             if (Input.GetKeyDown(KeyCode.Q)) SelectAll();
             if (ClickOrders && Input.GetKeyDown(KeyCode.X)) ClearSelection();
+            if (ClickOrders && (Input.GetKeyDown(KeyCode.Return) || Input.GetKeyDown(KeyCode.KeypadEnter))) LaunchRoutes();
             if (Input.GetKeyDown(KeyCode.Space)) swarmCamera.FocusOn(SelectedCount > 0 ? SelectionCentre : LeaderGround);
             HandlePointer();
         }
@@ -517,7 +519,10 @@ namespace GokiTakeover
             if (draft.Count > 0 && Flat(p - draft[draft.Count - 1]).magnitude < RoutePointSpacing) return;
             draft.Add(p);
         }
-        /// <summary>Sends the chosen allies (none chosen: everyone) along these floor points; returns how many went.</summary>
+        /// <summary>
+        /// Gives the chosen allies (none chosen: everyone) a route along these floor points. They hold their spot until
+        /// LaunchRoutes (決定): several routes can be set up and started together. Returns how many were given it.
+        /// </summary>
         public int CommandRoute(IList<Vector3> points, FoodItem food, int zone)
         {
             if (points == null || points.Count < 2) { Say("ルートが短すぎます — 床をドラッグして線を引こう"); return 0; }
@@ -527,15 +532,53 @@ namespace GokiTakeover
             for (int i = 0; i < allies.Length; i++)
             {
                 if (!Chosen(i)) continue;
-                allies[i].SetRoute(route);
+                allies[i].HoldForRoute(route);
                 count++;
             }
             if (count == 0) { Say(ActiveAllyCount == 0 ? NoAllyText : SelectHint); return 0; }
-            routes.Add(route);
-            RoutesIssued++; OrdersIssued++;
+            pending.Add(route);
+            RoutesIssued++;
+            Say("ルートを登録（" + count + "匹）  決定（Enter）で走り出す");
+            return count;
+        }
+        /// <summary>Routes drawn and waiting for 決定, each still held by at least one ally.</summary>
+        public IReadOnlyList<AllyRoute> PendingRoutes
+        {
+            get
+            {
+                pending.RemoveAll(r => { foreach (var a in allies) if (a.Alive && a.PendingRoute == r) return false; return true; });
+                return pending;
+            }
+        }
+        public int PendingCount(AllyRoute route) { int n = 0; foreach (var a in allies) if (a.Alive && a.PendingRoute == route) n++; return n; }
+        /// <summary>決定: every ally holding a route starts running it at once. Returns how many started.</summary>
+        public int LaunchRoutes()
+        {
+            int count = 0;
+            foreach (var ally in allies)
+            {
+                if (!ally.Alive || ally.PendingRoute == null) continue;
+                var route = ally.PendingRoute;
+                ally.SetRoute(route);
+                if (!routes.Contains(route)) routes.Add(route);
+                count++;
+            }
+            pending.Clear();
+            if (count == 0) { Say("決定待ちのルートがありません — 仲間を選んで床をドラッグ"); return 0; }
+            OrdersIssued++;
             LastOrder = AllyRoach.Order.Route;
             collectWarned = false;
-            Say("ルートを指示（" + count + "匹）  走り抜けて" + route.EndLabel);
+            Say("ルート開始！（" + count + "匹）");
+            return count;
+        }
+        /// <summary>取消: the waiting routes are dropped; those allies stay where they are.</summary>
+        public int CancelRoutes()
+        {
+            int count = 0;
+            foreach (var ally in allies)
+                if (ally.Alive && ally.PendingRoute != null) { ally.SetOrder(AllyRoach.Order.Move, ally.Position); count++; }
+            pending.Clear();
+            if (count > 0) Say("ルートを取り消した（" + count + "匹）");
             return count;
         }
         /// <summary>Routes some ally is still running (for the tactics view to draw).</summary>
