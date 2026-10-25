@@ -147,6 +147,21 @@ namespace GokiTakeover
             commander.Reveal(food, at.y < 0.5f ? commander.IsScouted(scout) : true);
         }
 
+        /// <summary>
+        /// Stage 2: a crumb or leftover the family drops appears where it was placed and is known at once. Only one that
+        /// is hidden or waiting to reappear elsewhere can drop; false while it still lies somewhere (or is carried).
+        /// </summary>
+        public bool DropFood(FoodItem food)
+        {
+            int index = System.Array.IndexOf(foods, food);
+            if (index < 0 || food.State == FoodItem.FoodState.Available || food.State == FoodItem.FoodState.Carried) return false;
+            food.ResetItem();
+            respawnAt[index] = -1;
+            previous[index] = FoodItem.FoodState.Available;
+            commander.Reveal(food, true);
+            return true;
+        }
+
         // ---- Nest ----
         public void OpenNestMenu()
         {

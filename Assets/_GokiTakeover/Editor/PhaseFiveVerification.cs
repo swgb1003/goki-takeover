@@ -33,8 +33,8 @@ namespace GokiTakeover.Editor
                 Check(assets == AssetDatabase.FindAssets("", new[] { GeneratedAssets.Root }).Length, "再生成でアセットが増えない");
 
                 var stages = PhaseFiveGenerator.StageAssets.Select(AssetDatabase.LoadAssetAtPath<StageDefinition>).ToArray();
-                Check(stages.All(s => s) && stages[0].playable && stages[0].zones.Length == 4 && stages[1].playable && stages[1].zones.Length == 6 && !stages[2].playable && stages[0].unlocks == stages[1].id
-                    && stages[1].unlocks == stages[2].id, "ステージ定義3つ（1・2は遊べる・縄張り4区域と6区域、3は制作中、1のクリアで2・2のクリアで3を解放）");
+                Check(stages.All(s => s) && stages[0].playable && stages[0].zones.Length == 4 && stages[1].playable && stages[1].zones.Length == 8 && !stages[2].playable && stages[0].unlocks == stages[1].id
+                    && stages[1].unlocks == stages[2].id, "ステージ定義3つ（1・2は遊べる・縄張り4区域と8区域、3は制作中、1のクリアで2・2のクリアで3を解放）");
                 Check(stages[1].foodGoal > stages[0].foodGoal && stages[1].fearGoal > stages[0].fearGoal && stages[1].holdPresence > stages[0].holdPresence && stages[1].holdSeconds > stages[0].holdSeconds
                     && stages[1].finalDefenceSeconds > stages[0].finalDefenceSeconds && stages[1].maxFoggers > stages[0].maxFoggers && stages[1].nestFumigations.Length > stages[0].nestFumigations.Length
                     && stages[1].humanDetectionScale < 1 && stages[1].difficulty > stages[0].difficulty && !stages[1].tutorial,
@@ -141,8 +141,16 @@ namespace GokiTakeover.Editor
             foreach (var zone in stage.zones)
                 Check(grid.Walkable(zone.centre) && grid.FindPath(commander.NestGround, zone.centre, path), "巣から「" + zone.name + "」へ仲間の経路あり");
             Check(grid.Walkable(new Vector3(7.12f, 0, -3.5f)) && !grid.Walkable(new Vector3(7.12f, 0, 0)) && grid.FindPath(commander.NestGround, new Vector3(19f, 0, -0.5f), path), "台所の巣からリビングの奥まで仲間が歩ける（壁は戸口だけ通れる）");
-            Check(commander.Foods.Count >= 17 && commander.Foods.Count(f => f.transform.position.x > 7.3f) == 9, "食料はリビングに9つ追加（計" + commander.Foods.Count + "）");
-            Check(commander.ScoutPoints.Count(p => p.x > 7.3f) == 8 && commander.ScoutPoints.All(p => grid.Walkable(p)), "リビングの調査地点8つ");
+            Check(commander.Foods.Count(f => f.transform.position.x > 7.3f && f.transform.position.z < 6) == 9 && commander.Foods.Count(f => f.transform.position.z > 6.3f) == 9
+                && commander.Foods.Count(f => f.name.StartsWith("FoodMarker_Life_")) == 4, "食料はリビングに9つ・寝室と子ども部屋に9つ・家族が落とす4つ（計" + commander.Foods.Count + "）");
+            Check(commander.ScoutPoints.Count(p => p.x > 7.3f && p.z < 6) == 8 && commander.ScoutPoints.Count(p => p.z > 6.3f) == 8 && commander.ScoutPoints.All(p => grid.Walkable(p)), "調査地点: リビング8つ・奥の2部屋8つ");
+            Check(GameObject.Find("Room/Bedroom/DoubleBed") && GameObject.Find("Room/Bedroom/WorkDesk") && GameObject.Find("Room/Bedroom/Wardrobe") && GameObject.Find("Room/KidsRoom/KidsBed")
+                && GameObject.Find("Room/KidsRoom/StudyDesk") && GameObject.Find("Room/KidsRoom/GameCorner") && GameObject.Find("Room/DiningChair_Mother") && !GameObject.Find("Room/LivingRoom/NightGlass"),
+                "奥に寝室（ダブルベッド・机・タンス）と子ども部屋（ベッド・勉強机・ゲーム）、食卓に3つ目の椅子");
+            Check(grid.Depth == StageTwoGenerator.GridDepth && grid.Walkable(new Vector3(5.7f, 0, 6.12f)) && grid.Walkable(new Vector3(11.6f, 0, 6.12f)) && grid.Walkable(new Vector3(7.12f, 0, 9.0f))
+                && !grid.Walkable(new Vector3(2.0f, 0, 6.12f)) && !grid.Walkable(new Vector3(7.12f, 0, 12.5f)) && grid.Walkable(new Vector3(-1.0f, 0, 12.6f)) && grid.Walkable(new Vector3(19.4f, 0, 12.6f)),
+                "奥の2部屋への戸口3つ（台所→寝室・リビング→子ども部屋・2部屋の間）、ベッドの下に入れる");
+            Check(Mathf.Approximately(stage.calmSeconds, 60) && stage.heatArea.yMax >= StageTwoGenerator.NorthMaxZ && stage.description == StageTwoGenerator.Description, "ステージ2の定義: 4部屋・警戒は60秒で下がる・罠の記録は家全体");
             Check(!GameObject.Find("Phase5_Stage/BackDoor") && GameObject.Find("Phase5_Stage/HallDoor") && GameObject.Find("Room/LivingRoom/Sofa") && GameObject.Find("Room/LivingRoom/TvBoard"),
                 "勝手口はリビングへの戸口に。リビング（ソファ・テレビ台）と廊下へのドア");
             Check(GameObject.FindObjectsByType<Transform>(FindObjectsSortMode.None).Count(t => t.name == "Wall_Right" && t.parent && t.parent.name == "Room") == 3, "台所の右の壁は戸口の両側と上の3枚");
@@ -154,6 +162,20 @@ namespace GokiTakeover.Editor
             Check(catGrid == AssetDatabase.LoadAssetAtPath<AllyNavGrid>(StageTwoGenerator.CatGridPath) && catGrid.Walkable(StageTwoGenerator.CatBed) && !catGrid.Walkable(new Vector3(15.5f, 0, 4.45f))
                 && !catGrid.Walkable(session.Nest.position) && catGrid.Walkable(new Vector3(7.12f, 0, -3.5f)) && catGrid.FindPath(StageTwoGenerator.CatBed, new Vector3(-4.0f, 0, 0.6f), path),
                 "猫の床: 寝床から台所まで歩ける・ソファの下と巣には入れない");
+            Check(!catGrid.Walkable(new Vector3(-1.0f, 0, 12.6f)) && catGrid.Walkable(new Vector3(9.5f, 0, 9.0f)) && catGrid.FindPath(StageTwoGenerator.CatBed, new Vector3(-3.0f, 0, 8.4f), path)
+                && Mathf.Approximately(catLink.FindProperty("area").rectValue.yMax, 16f), "猫は奥の部屋も歩く・ベッドの下には入れない");
+            var life = UnityEngine.Object.FindFirstObjectByType<HouseholdLife>();
+            var lifeLink = life ? new SerializedObject(life) : null;
+            var spots = life ? (HouseholdLife.Spot[])typeof(HouseholdLife).GetField("spots", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance).GetValue(life) : new HouseholdLife.Spot[0];
+            Check(life && spots.Length == 14 && spots.Count(s => s.member == 0) == 5 && spots.Count(s => s.member == 1) == 5 && spots.Count(s => s.member == 2) == 4
+                && spots.Count(s => s.kind == HouseholdLife.Kind.Dinner) == 3 && spots.Select(s => s.member * 100 + (int)s.kind).Distinct().Count() == 14,
+                "家族の生活: 14か所（父5・母5・息子4、夕食は3人）");
+            Check(lifeLink.FindProperty("crumbs").arraySize == 2 && lifeLink.FindProperty("leftovers").arraySize == 2 && lifeLink.FindProperty("vacuumRoute").arraySize >= 8
+                && ((Transform)lifeLink.FindProperty("newspaper").objectReferenceValue).parent == session.Human.transform && !((Transform)lifeLink.FindProperty("newspaper").objectReferenceValue).gameObject.activeSelf
+                && ((Transform)lifeLink.FindProperty("gamepad").objectReferenceValue).parent == session.Family[1].transform, "食べこぼし2・食べ残し2・掃除の経路・父の新聞と息子のコントローラー（持つ時だけ表示）");
+            var nestDoor = GameObject.Find("KitchenCabinet").transform.TransformPoint(new Vector3(-0.45f, 0, -1.45f));
+            var wash = spots.First(s => s.kind == HouseholdLife.Kind.Wash);
+            Check(Vector3.ProjectOnPlane(wash.stand - nestDoor, Vector3.up).magnitude >= 1.0f, "皿洗いの母は巣の扉をふさがない（" + Vector3.ProjectOnPlane(wash.stand - nestDoor, Vector3.up).magnitude.ToString("F2") + "m）");
             var navigation = (UnityEngine.AI.NavMeshData)new SerializedObject(UnityEngine.Object.FindFirstObjectByType<KitchenNavigation>()).FindProperty("data").objectReferenceValue;
             Check(navigation == AssetDatabase.LoadAssetAtPath<UnityEngine.AI.NavMeshData>(StageTwoGenerator.NavPath), "家全体の人間用NavMesh");
             var instance = UnityEngine.AI.NavMesh.AddNavMeshData(navigation);
@@ -167,8 +189,16 @@ namespace GokiTakeover.Editor
                 {
                     var route = (Transform[])typeof(HumanAIController).GetField("patrolPoints", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance).GetValue(h);
                     Check(route.Length >= 8 && route.All(t => UnityEngine.AI.NavMesh.CalculatePath(h.transform.position, t.position, UnityEngine.AI.NavMesh.AllAreas, walk) && walk.status == UnityEngine.AI.NavMeshPathStatus.PathComplete)
-                        && route.Any(t => t.position.x > 8) && route.Any(t => t.position.x < 6), h.Label + "の巡回 " + route.Length + "か所（台所とリビングの両方・すべて歩ける）");
+                        && route.Any(t => t.position.x > 8) && route.Any(t => t.position.x < 6) && route.Any(t => t.position.z > 6.3f), h.Label + "の巡回 " + route.Length + "か所（台所・リビング・奥の部屋・すべて歩ける）");
                 }
+                foreach (var s in spots)
+                {
+                    var who = session.HumanAt(s.member);
+                    Check(UnityEngine.AI.NavMesh.CalculatePath(who.transform.position, s.stand, UnityEngine.AI.NavMesh.AllAreas, walk) && walk.status == UnityEngine.AI.NavMeshPathStatus.PathComplete,
+                        who.Label + "の「" + HouseholdLife.Name(s.kind) + "」の場所まで歩ける");
+                }
+                var lifeRoute = (Vector3[])typeof(HouseholdLife).GetField("vacuumRoute", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance).GetValue(life);
+                Check(lifeRoute.All(p => UnityEngine.AI.NavMesh.CalculatePath(session.Family[0].transform.position, p, UnityEngine.AI.NavMesh.AllAreas, walk) && walk.status == UnityEngine.AI.NavMeshPathStatus.PathComplete), "掃除の経路 " + lifeRoute.Length + "か所はすべて歩ける");
             }
             finally { instance.Remove(); }
         }

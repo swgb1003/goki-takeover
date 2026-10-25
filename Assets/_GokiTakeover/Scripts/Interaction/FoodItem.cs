@@ -4,7 +4,7 @@ namespace GokiTakeover
 {
     public sealed class FoodItem : MonoBehaviour
     {
-        public enum FoodState { Available, Carried, Delivered }
+        public enum FoodState { Available, Carried, Delivered, Hidden }
         public FoodState State { get; private set; }
         private Transform home;
         private Vector3 homePosition;
@@ -28,6 +28,12 @@ namespace GokiTakeover
         {
             if (State != FoodState.Carried) return;
             State = FoodState.Delivered;
+            gameObject.SetActive(false);
+        }
+        // Stage 2: crumbs and leftovers the family drops wait out of sight until then (ColonyManager.DropFood).
+        public void Hide()
+        {
+            State = FoodState.Hidden;
             gameObject.SetActive(false);
         }
         public void ResetItem()

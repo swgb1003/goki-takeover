@@ -114,12 +114,16 @@ namespace GokiTakeover
             if (playerRun) yield return Capture("stage2-briefing-720p.png");
             progress.Begin();
             yield return null; yield return null;
-            Check(progress.Current == StageProgress.Phase.Invasion && session.IsRunning && progress.ZoneCount == 6 && colony.Allies == stage.startAllies, "侵略開始: 縄張り6区域・仲間 " + stage.startAllies + "匹");
+            Check(progress.Current == StageProgress.Phase.Invasion && session.IsRunning && progress.ZoneCount == 8 && colony.Allies == stage.startAllies, "侵略開始: 縄張り8区域（4部屋）・仲間 " + stage.startAllies + "匹");
             Check(mother.SearchWander && son.PatrolRandom && mother.ExtraPrey != null && son.ExtraPrey != null, "母と息子も部屋を巡回し、見失うと探し回り、仲間も狙う");
             Check(Mathf.Approximately(mother.DetectionTimeScale, father.DetectionTimeScale) && father.DetectionTimeScale < 0.9f, "一軒家の家族は気づくのが早い（発見までの時間 x" + father.DetectionTimeScale.ToString("F2") + "）");
             Check(son.Agent.speed > father.Agent.speed * 1.1f || son.Agent.speed > 0, "息子は足が速い");
             Check(!son.Slaps && mother.Slaps && father.Slaps, "息子はスリッパを使わない（網だけ）");
             Check(cat && cat.Current == PetCat.Phase.Nap && Flat(cat.transform.position - new Vector3(9.3f, 0, 4.6f)).magnitude < 0.3f, "飼い猫は寝床でお昼寝から始まる");
+
+            // ---- Daily life: the calm family lives instead of patrolling (before anything has been seen) ----
+            yield return LifeChecks();
+            life.enabled = false;   // the older checks below drive the family themselves
 
             // Everyone frozen for the scripted parts.
             FreezeAll();
@@ -129,7 +133,7 @@ namespace GokiTakeover
             // ---- The house ----
             var path = new List<Vector3>();
             Check(commander.Grid.FindPath(commander.NestGround, new Vector3(18, 0, 0), path), "巣（台所の流し台下）からリビングの奥まで仲間が歩ける");
-            int living = 0; foreach (var f in commander.Foods) if (f.transform.position.x > 7.3f) living++;
+            int living = 0; foreach (var f in commander.Foods) if (f.transform.position.x > 7.3f && f.transform.position.z < 6) living++;
             Check(living == 9, "リビングに食料9つ（高い所: テーブルの上・テレビ台・本棚の上）");
             Place(new Vector3(11.5f, 0, -0.5f));
             ShowFrom(new Vector3(9.0f, 2.2f, -4.6f), new Vector3(15.5f, 1.2f, 2.5f));
@@ -324,10 +328,166 @@ namespace GokiTakeover
             var result = SaveData.Load();
             Check(result.IsUnlocked("stage03") && progress.NewStageUnlocked, "クリアで「飲食店」が解放される");
             if (playerRun) yield return Capture("stage2-clear-720p.png");
+            life.enabled = true;
             progress.RestartStage();
             yield return null; yield return null;
+            bool hidden = true;
+            foreach (var f in commander.Foods) if (f.name.StartsWith("FoodMarker_Life_")) hidden &= f.State == FoodItem.FoodState.Hidden;
+            Check(hidden && life.Dinner == HouseholdLife.Meal.None && life.CrumbsDropped == 0 && life.Dinners == 0, "リプレイで食べこぼし・食べ残しは片付き、夕食も最初から");
             Check(session.HumanPresent(1) && session.HumanPresent(2) && vacuum.Allowed && net.Allowed && !mother.Suspended, "リプレイで家族は家に戻る（掃除機・網も使える）");
             Check(cat.Current == PetCat.Phase.Nap && cat.Pounces == 0, "リプレイで猫も寝床に戻る");
+        }
+
+        private HouseholdLife life;
+        private IEnumerator LifeChecks()
+        {
+            life = FindFirstObjectByType<HouseholdLife>();
+            var reaction = colony.Reaction;
+            var settings = session.Settings;
+            Check(life && life.MemberCount == 3 && reaction.CurrentLevel == HumanReaction.Level.Peace && reaction.CalmAfterSeconds >= 30, "家族の生活: 平穏な家（落ち着くと警戒が下がる設定 " + reaction.CalmAfterSeconds + "秒）");
+            var lifeFoods = new List<int>();
+            for (int i = 0; i < commander.Foods.Count; i++) if (commander.Foods[i].name.StartsWith("FoodMarker_Life_")) lifeFoods.Add(i);
+            bool hidden = lifeFoods.Count == 4;
+            foreach (int i in lifeFoods) hidden &= commander.Foods[i].State == FoodItem.FoodState.Hidden && !commander.Foods[i].gameObject.activeSelf;
+            Check(hidden, "食べこぼし・食べ残しは落とされるまで無い（4つ）");
+            PlaceExact(session.Nest.position + Vector3.up * 0.1f);   // hidden in the nest: nobody sees or hears the player
+            yield return WaitFor(() => life.Leading(0) && life.Leading(1) && life.Leading(2), 3);
+            Check(life.Leading(0) && life.Leading(1) && life.Leading(2) && father.State == HumanAIController.HumanState.Routine, "平穏な家族は巡回せず、それぞれ生活の場所へ向かう");
+
+            // The father in front of the TV, the mother at the hob, the son at his game.
+            life.DebugStart(0, HouseholdLife.Kind.Tv); life.DebugStart(1, HouseholdLife.Kind.Cook); life.DebugStart(2, HouseholdLife.Kind.Game);
+            var fatherBody = father.GetComponentInChildren<BlenderHumanAnimator>();
+            var motherBody = mother.GetComponentInChildren<BlenderHumanAnimator>();
+            var sonBody = son.GetComponentInChildren<BlenderHumanAnimator>();
+            yield return WaitFor(() => fatherBody.PoseWeight > 0.97f && motherBody.PoseWeight > 0.97f && sonBody.PoseWeight > 0.97f, 4);
+            Check(life.BusyAt(0, out var k0) && k0 == HouseholdLife.Kind.Tv && fatherBody.ShownPose == BlenderHumanAnimator.LifePose.Sit && father.Agent.isStopped && father.transform.forward.z < -0.9f && life.Label(0) == "テレビ",
+                "父はソファに座ってテレビ（テレビの方を向く・人間の欄「テレビ」）");
+            Check(Flat(fatherBody.PelvisWorld - father.transform.position).magnitude > 0.7f && father.GetComponent<CapsuleCollider>().center.z < -0.7f,
+                "腰は立ち位置の後ろの座面に（体の当たり判定も座面へ: 腰 " + Flat(fatherBody.PelvisWorld - father.transform.position).magnitude.ToString("F2") + "m・判定 z" + father.GetComponent<CapsuleCollider>().center.z.ToString("F2") + "）");
+            Check(father.SightAngle < settings.sightAngle * 0.7f && father.SightRange < settings.sightDistance && Flat(father.Eye - father.transform.position).magnitude > 0.7f,
+                "テレビを見ている間は視野が狭く短い・目は座面の上（" + father.SightAngle.ToString("F0") + "°・" + father.SightRange.ToString("F1") + "m）");
+            Check(life.BusyAt(1, out var k1) && k1 == HouseholdLife.Kind.Cook && motherBody.ShownPose == BlenderHumanAnimator.LifePose.Cook && mother.transform.forward.z > 0.9f && life.Label(1) == "料理中",
+                "母はコンロで料理（壁を向く・人間の欄「料理中」）");
+            var pad = son.transform.Find("GamePad");
+            Check(life.BusyAt(2, out var k2) && k2 == HouseholdLife.Kind.Game && sonBody.ShownPose == BlenderHumanAnimator.LifePose.Floor && pad && pad.gameObject.activeSelf && son.transform.position.z > 6.3f,
+                "息子は子ども部屋の床でゲーム（コントローラーを持つ）");
+            Place(new Vector3(11.6f, 0, 0.3f));   // to his front left, clear of the coffee table
+            Physics.SyncTransforms();
+            Vector3 toPlayer = Flat(motor.FootPoint - father.transform.position);
+            Check(Vector3.Angle(father.transform.forward, toPlayer) < settings.sightAngle * 0.5f && toPlayer.magnitude < settings.sightDistance && father.HasLineOfSight() && !father.SensePlayer(),
+                "ふだんなら見える位置（" + Vector3.Angle(father.transform.forward, toPlayer).ToString("F0") + "°・" + toPlayer.magnitude.ToString("F1") + "m）でも、テレビに夢中の父には見えない");
+            if (playerRun) { yield return Shot(new Vector3(18.2f, 3.4f, -1.8f), new Vector3(14.0f, 2.0f, 3.6f), "stage2-life-tv-720p.png"); }
+            yield return WaitFor(() => false, 1.2f);
+            Check(father.State == HumanAIController.HumanState.Routine && father.Detection < 0.01f && session.Discoveries == 0, "…じっとしていれば見つからない");
+            if (playerRun)
+            {
+                yield return Shot(new Vector3(0.6f, 3.8f, -0.8f), new Vector3(3.0f, 2.4f, 3.8f), "stage2-life-cook-720p.png");
+                yield return Shot(new Vector3(14.2f, 3.6f, 8.4f), new Vector3(9.6f, 1.0f, 12.0f), "stage2-life-game-720p.png");
+            }
+            // Crumbs from the pan.
+            life.DebugBusyFor(1, 0.3f);
+            yield return WaitFor(() => life.CrumbsDropped >= 2, 3);
+            int dropped = 0;
+            foreach (int i in lifeFoods) if (commander.Foods[i].State == FoodItem.FoodState.Available && commander.IsDiscovered(i) && commander.Foods[i].transform.position.z > 2 && commander.Foods[i].transform.position.x > 2) dropped++;
+            Check(life.CrumbsDropped == 2 && dropped == 2, "料理中の母は床に食べこぼす（コンロの前に食料2つ・すぐ見つかる）");
+
+            // Running close by: the busy father hears it and turns round.
+            Place(new Vector3(12.0f, 0, 1.6f));   // open floor: running on the spot cannot climb anything
+            Vector3 seat = father.transform.position;
+            Check(life.Hears(0, motor.FootPoint, true, true) && !life.Hears(0, motor.FootPoint, false, true) && !life.Hears(0, seat + new Vector3(0, 0, -3.5f), true, true),
+                "走る足音は " + HouseholdLife.HearRunning + "m 以内で聞こえる（歩く音・遠い足音は聞こえない）");
+            motor.MovementEnabled = true;
+            float end = Time.realtimeSinceStartup + 2;
+            while (!life.Startled(0) && Time.realtimeSinceStartup < end) { motor.MovementEnabled = true; motor.SimulateMove(new Vector2(Mathf.Sin(Time.time * 12) * 0.8f, 0), true, Time.deltaTime); yield return null; }
+            motor.SimulateMove(Vector2.zero, false, Time.deltaTime);
+            Check(life.Startled(0) && life.Startles == 1 && life.Label(0) == "物音に気づいた", "そばを走ると、テレビを見ていた父が物音に気づく（" + life.Startles + "回・" + life.Label(0) + "・走る " + motor.IsRunning + " " + motor.CurrentSpeed.ToString("F2") + "・登り " + motor.IsClimbing + "・距離 " + Flat(motor.FootPoint - seat).magnitude.ToString("F2") + "・" + father.State + "）");
+            yield return WaitFor(() => father.State != HumanAIController.HumanState.Routine, 3);
+            yield return null;
+            Check(father.State == HumanAIController.HumanState.Chase && life.Rising(0) && father.Agent.isStopped && Flat(father.transform.position - seat).magnitude < 0.2f,
+                "振り向いて見つけると追いかける（立ち上がるまで一瞬止まる）");
+            yield return WaitFor(() => !life.Rising(0), 2);
+            Check(!father.Agent.isStopped && fatherBody.Pose == BlenderHumanAnimator.LifePose.None, "立ち上がると普段どおり追跡");
+            father.enabled = false;
+            PlaceExact(session.Nest.position + Vector3.up * 0.1f);
+            yield return null;
+
+            // Dozing off on the sofa: blind until a roach runs (or walks right) by.
+            father.ResetHuman(); father.enabled = true;
+            life.DebugStart(0, HouseholdLife.Kind.Doze);
+            yield return WaitFor(() => life.Dozing(0) && fatherBody.PoseWeight > 0.97f, 4);
+            Place(new Vector3(13.0f, 0, 1.2f));
+            toPlayer = Flat(motor.FootPoint - father.transform.position);
+            Check(life.Dozing(0) && fatherBody.ShownPose == BlenderHumanAnimator.LifePose.Doze && father.SightAngle == 0 && !father.SensePlayer() && Vector3.Angle(father.transform.forward, toPlayer) < settings.sightAngle * 0.5f,
+                "うたた寝の父は目の前（" + toPlayer.magnitude.ToString("F1") + "m）でも見えない");
+            if (playerRun) { yield return Shot(new Vector3(16.6f, 3.0f, 0.2f), new Vector3(14.0f, 2.2f, 3.8f), "stage2-life-doze-720p.png"); }
+            yield return WaitFor(() => false, 1.0f);
+            Vector3 dozer = father.transform.position;
+            Check(life.Dozing(0) && father.State == HumanAIController.HumanState.Routine && father.Detection < 0.01f
+                && life.Hears(0, dozer + Vector3.right * 0.6f, false, true) && !life.Hears(0, dozer + Vector3.right * 1.5f, false, true) && life.Hears(0, dozer + Vector3.right * 2.0f, true, true),
+                "じっとしていれば起きない（すぐ横を歩くか " + HouseholdLife.WakeRunning + "m 以内を走ると起きる）");
+            PlaceExact(session.Nest.position + Vector3.up * 0.1f);
+
+            // Dinner: the mother cooks, calls everyone to the table, the other rooms empty, leftovers stay behind.
+            life.DebugDinnerNow();
+            yield return WaitFor(() => life.Dinner == HouseholdLife.Meal.Cooking, 2);
+            yield return null;
+            Check(life.Dinner == HouseholdLife.Meal.Cooking && life.Current(1) != null && life.Current(1).kind == HouseholdLife.Kind.Cook, "夕食の時間: 母が料理を始める");
+            mother.Agent.Warp(life.Current(1).stand);
+            yield return WaitFor(() => life.BusyAt(1, out var kc) && kc == HouseholdLife.Kind.Cook, 4);
+            life.DebugBusyFor(1, 0.2f);
+            yield return WaitFor(() => life.Dinner == HouseholdLife.Meal.Gathering, 3);
+            Check(life.Dinner == HouseholdLife.Meal.Gathering && reaction.Bubble.StartsWith("ごはんよー") && commander.Notice.StartsWith("家族が夕食"), "料理ができると「ごはんよー！」で家族を食卓に呼ぶ");
+            yield return null; yield return null;
+            for (int i = 0; i < 3; i++) if (life.Current(i) != null && life.Current(i).kind == HouseholdLife.Kind.Dinner) session.HumanAt(i).Agent.Warp(life.Current(i).stand);
+            yield return WaitFor(() => life.Dinner == HouseholdLife.Meal.Eating, 6);
+            yield return WaitFor(() => fatherBody.PoseWeight > 0.97f && motherBody.PoseWeight > 0.97f && sonBody.PoseWeight > 0.97f, 4);
+            bool atTable = true;
+            foreach (var h in new[] { father, mother, son }) atTable &= Flat(h.transform.position - new Vector3(-2.25f, 0, -0.9f)).magnitude < 3.4f && h.GetComponentInChildren<BlenderHumanAnimator>().ShownPose == BlenderHumanAnimator.LifePose.Eat;
+            Check(life.Dinner == HouseholdLife.Meal.Eating && atTable, "家族3人が食卓の椅子で食べる（ほかの部屋は空になる）");
+            if (playerRun) { yield return Shot(new Vector3(2.4f, 4.0f, -4.6f), new Vector3(-2.6f, 2.0f, -0.6f), "stage2-life-dinner-720p.png"); }
+            life.DebugEndMeal();
+            yield return WaitFor(() => life.Dinner == HouseholdLife.Meal.None, 2);
+            int left = 0;
+            foreach (int i in lifeFoods) if (commander.Foods[i].State == FoodItem.FoodState.Available && commander.Foods[i].transform.position.x < 0) left++;
+            Check(life.Dinners == 1 && life.LeftoversDropped == 2 && left == 2, "食後は食卓の上と床に食べ残しが出る");
+
+            // The mother's daily vacuuming: no warning fan unless she spots a roach.
+            life.DebugStart(1, HouseholdLife.Kind.Vacuum);
+            yield return WaitFor(() => life.Vacuuming(1), 3);
+            Vector3 from = mother.transform.position;
+            yield return WaitFor(() => Flat(mother.transform.position - from).magnitude > 1.0f, 5);
+            Check(life.Vacuuming(1) && motherBody.SprayAim > 0.3f && vacuum.Current == VacuumAttack.Phase.Idle && life.Label(1) == "掃除中" && Flat(mother.transform.position - from).magnitude > 1.0f,
+                "平穏な時も母は掃除機をかけて回る（ヘッドは床に・予告の扇は出ない）");
+
+            // 「発見」: a short patrol between activities. 「警戒」: no daily life. Quiet for long enough: back to 「発見」.
+            Check(reaction.CurrentLevel == HumanReaction.Level.Noticed && session.Discoveries == 1, "主人公が1回見つかって「発見」に");
+            life.DebugStart(2, HouseholdLife.Kind.Homework);
+            yield return WaitFor(() => life.BusyAt(2, out var kh) && kh == HouseholdLife.Kind.Homework && sonBody.PoseWeight > 0.97f, 4);
+            Check(sonBody.ShownPose == BlenderHumanAnimator.LifePose.Desk && son.transform.forward.z > 0.9f, "息子は勉強机で宿題（壁を向く）");
+            if (playerRun) { yield return Shot(new Vector3(15.8f, 3.6f, 10.4f), new Vector3(12.0f, 2.0f, 14.4f), "stage2-life-homework-720p.png"); }
+            life.DebugFinish(2);
+            yield return null; yield return null;
+            Check(!life.Leading(2) && son.State == HumanAIController.HumanState.Routine && !son.Agent.isStopped, "「発見」の段階では、生活の合間に少し巡回する");
+            progress.DebugAddFear(40);
+            yield return null; yield return null;
+            Check(reaction.CurrentLevel >= HumanReaction.Level.Alert && !life.Leading(0) && !life.Leading(1) && !life.Leading(2) && fatherBody.Pose == BlenderHumanAnimator.LifePose.None && !life.Vacuuming(1),
+                "「警戒」になると生活をやめて巡回する");
+            foreach (var h in new[] { father, mother, son }) h.ResetHuman();
+            reaction.RestoreFear(0, reaction.FearGained);
+            reaction.DebugQuiet(reaction.CalmAfterSeconds + 1);
+            yield return null; yield return null;
+            Check(reaction.CurrentLevel == HumanReaction.Level.Noticed && reaction.Calmed == 1, "しばらく何も見なければ「警戒」から「発見」に下がる");
+            yield return WaitFor(() => life.Leading(0) || life.Leading(1) || life.Leading(2), 3);
+            Check(life.Leading(0) || life.Leading(1) || life.Leading(2), "落ち着くと家族は生活に戻る");
+        }
+
+        // A screenshot from a fixed view (the follow camera is paused for it, then resumes).
+        private IEnumerator Shot(Vector3 eye, Vector3 target, string name)
+        {
+            cameraRig.enabled = false;
+            ShowFrom(eye, target);
+            yield return Capture(name);
+            cameraRig.enabled = true;
         }
 
         private void FreezeAll()

@@ -17,7 +17,8 @@ namespace GokiTakeover
         {
             Click, Focus, Pickup, Deliver, Breed, Capture, Order, Discovered, Warning, Whoosh, SlipperHit,
             Hurt, AllyDeath, Spray, Fogger, Eat, Clear, Defeat, Siren,
-            CatMeow, CatHiss
+            CatMeow, CatHiss,
+            Sizzle, Dishes, Snore, Chime, GameBeep
         }
         [SerializeField] private PhaseTwoSession session;
         [SerializeField] private SwarmCommander commander;
@@ -38,6 +39,9 @@ namespace GokiTakeover
         private int attackPhases;
         private PetCat pet;
         private PetCat.Phase petPhase;
+        private HouseholdLife life;
+        private HouseholdLife.Meal meal;
+        private float lifeClock;
         private PhaseTwoSession.RunState runState;
         private StageProgress.Phase phase;
         private SmokeFogger.Phase[] fogger;
@@ -63,6 +67,7 @@ namespace GokiTakeover
             steps.clip = Skitter();
             if (session) for (int i = 0; i < session.HumanCount; i++) session.HumanAt(i).SlipperLanding += OnSlipperLanding;
             if (session) pet = FindFirstObjectByType<PetCat>();
+            if (session) life = FindFirstObjectByType<HouseholdLife>();
         }
         private void OnDestroy()
         {
@@ -138,6 +143,7 @@ namespace GokiTakeover
                 swings[i] = swing;
             }
             if (progress) HouseholdSounds();
+            if (life) LifeSounds();
             if (pet)
             {
                 if (pet.Current != petPhase)
@@ -220,6 +226,25 @@ namespace GokiTakeover
             else if (steps.volume <= 0 && steps.isPlaying) steps.Pause();
         }
 
+        // Stage 2 daily life: the busy family is heard nearby (the pan, the dishes, the game, the snoring) and the dinner call.
+        private void LifeSounds()
+        {
+            if (life.Dinner == HouseholdLife.Meal.Gathering && meal != HouseholdLife.Meal.Gathering) Play(Sfx.Chime, 0.7f);
+            meal = life.Dinner;
+            if (!session.IsRunning) return;
+            lifeClock += Time.deltaTime;
+            if (lifeClock < 2.6f) return;
+            lifeClock = 0;
+            for (int i = 0; i < life.MemberCount && i < session.HumanCount; i++)
+            {
+                if (!session.HumanPresent(i) || !life.BusyAt(i, out var kind)) continue;
+                var sfx = kind == HouseholdLife.Kind.Cook ? Sfx.Sizzle : kind == HouseholdLife.Kind.Wash ? Sfx.Dishes : kind == HouseholdLife.Kind.Doze ? Sfx.Snore : kind == HouseholdLife.Kind.Game ? Sfx.GameBeep : Sfx.Click;
+                if (sfx == Sfx.Click) continue;
+                float near = 1 - Mathf.Clamp01(Vector3.Distance(session.Player.position, session.HumanAt(i).transform.position) / 10f);
+                if (near > 0.05f) Play(sfx, 0.5f * near);
+            }
+        }
+
         // ---------------- Synthesis ----------------
         private AudioClip Build(Sfx sfx)
         {
@@ -248,6 +273,11 @@ namespace GokiTakeover
                 case Sfx.Clear: s = Notes(new[] { 523f, 659f, 784f, 1047f, 1047f }, 0.13f, Wave.Triangle, 0.5f, 0.6f); break;
                 case Sfx.CatMeow: s = Tone(0.16f, 560, 940, Wave.Triangle, 0.38f); Add(s, Tone(0.34f, 940, 470, Wave.Triangle, 0.38f), (int)(Rate * 0.14f)); break;
                 case Sfx.CatHiss: s = Filtered(Noise(0.45f, 0.5f, 0.1f), 0.5f, 0.5f, true); break;
+                case Sfx.Sizzle: s = Filtered(Noise(0.9f, 0.3f, 0.5f), 0.8f, 0.8f, true); break;
+                case Sfx.Dishes: s = Notes(new[] { 2350f, 0f, 2900f }, 0.045f, Wave.Sine, 0.22f, 0.15f); break;
+                case Sfx.Snore: s = Tone(0.85f, 78, 66, Wave.Saw, 0.2f); Add(s, Filtered(Noise(0.85f, 0.18f, 0.6f), 0.2f, 0.2f, false), 0); break;
+                case Sfx.Chime: s = Notes(new[] { 659f, 784f, 1047f }, 0.16f, Wave.Triangle, 0.4f, 0.5f); break;
+                case Sfx.GameBeep: s = Notes(new[] { 1320f, 1760f, 1320f, 990f }, 0.05f, Wave.Square, 0.12f); break;
                 case Sfx.Defeat: s = Notes(new[] { 392f, 330f, 262f, 196f }, 0.2f, Wave.Triangle, 0.45f, 0.4f); break;
                 default:   // Siren
                     s = new float[(int)(Rate * 1.4f)];

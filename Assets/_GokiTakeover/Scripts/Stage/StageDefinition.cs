@@ -64,6 +64,7 @@ namespace GokiTakeover
         [Min(0.5f)] public float humanSpeedScale = 1f;       // every member's walking and chasing speed x this
         public Rect heatArea = new Rect(-7, -6, 14, 12);     // floor plan for the trap heat map (x, z, width, depth)
         public bool familyLeavesForDefence = true;           // the family walks out when the exterminator comes
+        [Min(0)] public float calmSeconds = 0f;              // 「警戒」 calms to 「発見」 after this long without a sighting (0 = never)
 
         [Header("最終防衛（反応段階4: 駆除業者）")]
         [Min(10)] public float finalDefenceSeconds = 60f;
