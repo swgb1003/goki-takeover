@@ -32,10 +32,13 @@ namespace GokiTakeover
         private static readonly Color Muted = new Color(0.62f, 0.62f, 0.57f);
         private static readonly Color PanelColor = new Color(0.025f, 0.035f, 0.035f, 0.9f);
         private static readonly Rect CommandBar = new Rect(30, 594, 1220, 96);
-        private static readonly AllyRoach.Order[] Orders = { AllyRoach.Order.Collect, AllyRoach.Order.Explore, AllyRoach.Order.Defend, AllyRoach.Order.Rally, AllyRoach.Order.Capture };
-        private static readonly string[] OrderHelp = { "食料を集めて巣へ運ぶ", "未調査の場所を調べる", "巣のまわりで待機", "目標へ走って集結", "区域へ分かれて占領" };
-        private static readonly string[] OrderGlyph = { "◆", "◎", "■", "▲", "□" };
-        private const float OrderWidth = 236, OrderStep = 246;
+        // The rally (4) is gone from Phase 5: left-click moves and drawn routes do its job.
+        private static readonly AllyRoach.Order[] Orders = { AllyRoach.Order.Collect, AllyRoach.Order.Explore, AllyRoach.Order.Defend, AllyRoach.Order.Capture };
+        private static readonly int[] OrderKeys = { 1, 2, 3, 5 };
+        private static readonly string[] OrderHelp = { "食料を集めて巣へ運ぶ", "未調査の場所を調べる", "巣のまわりで待機", "区域へ分かれて占領" };
+        private static readonly string[] OrderGlyph = { "◆", "◎", "■", "□" };
+        private const int CaptureButton = 3;
+        private const float OrderWidth = 296, OrderStep = 308;
         private static Rect OrderRect(int index) => new Rect(30 + index * OrderStep, 598, OrderWidth, 88);
         // Tutorial guide: top centre in the normal view, above the order bar in the tactics view (right-aligned
         // over button 5 while it is the thing to press), between the title and the stock in the nest.
@@ -290,7 +293,8 @@ namespace GokiTakeover
         {
             var zone = progress.Stage.zones[i];
             bool done = progress.ZoneCaptured(i), contested = progress.ZoneContested(i);
-            string state = done ? "占領済" : contested ? "人間がいる" : Mathf.FloorToInt(progress.ZoneProgress(i) * 100) + "%  " + progress.ZonePresence(i) + "/" + progress.Stage.holdPresence + "匹";
+            float rate = progress.ZoneRate(i);
+            string state = done ? "占領済" : contested ? "人間がいる" : Mathf.FloorToInt(progress.ZoneProgress(i) * 100) + "%  " + progress.ZonePresence(i) + "/" + progress.Stage.holdPresence + "匹" + (rate > 1.01f ? "  ×" + rate.ToString("0.#") : "");
             Marker(zone.centre + Vector3.up * 0.25f, (done ? "■ " : "□ ") + zone.name + "  " + state, contested ? Orange : done ? Lime : Cream, false, view, done ? 0.8f : 1);
         }
         private void FoggerMarkers(Camera view)
@@ -366,6 +370,7 @@ namespace GokiTakeover
                 Marker(session.Motor.FootPoint + Vector3.up * 0.6f, "◆ あなた", Lime, false, view);
                 for (int i = 0; i < commander.Allies.Count; i++) AllyMarker(i, view);
             }
+            if (view) RouteLines(view);
             if (commander.Dragging)
             {
                 Rect r = commander.DragScreenRect;
@@ -395,14 +400,14 @@ namespace GokiTakeover
             Stat(new Rect(1112, 30, 130, 60), "？ 調査", commander.ScoutedCount + " / " + commander.ScoutPoints.Count, danger == "高" ? Orange : Cream);
 
             int chosen = commander.SelectedCount;
-            GUI.Label(new Rect(34, 566, 1220, 24), "選択 " + chosen + "匹   左クリック・ドラッグ 選択   右クリック 移動先・食料・区域（占拠）   Q 全員   F 追従   Space 視点を戻す", small);
-            for (int i = 0; i < Orders.Length; i++) OrderButton(OrderRect(i), i, chosen > 0);
+            GUI.Label(new Rect(34, 566, 1220, 24), (chosen > 0 ? "選択 " + chosen + "匹" : "選択なし＝全員") + "   左クリック: 仲間＝選ぶ/外す  食料・区域・床＝指示   ドラッグ: ルート   Q 全員  X 解除  F 追従  Space 視点", small);
+            for (int i = 0; i < Orders.Length; i++) OrderButton(OrderRect(i), i, commander.ActiveAllyCount > 0);
             SpeechBubble();
             if (Guiding)
             {
                 if (view) GuideTargets(view);
                 GuidePanel(TacticsGuide, tutorial.Current, true);
-                if (tutorial.Current == StageTutorial.Step.Capture || tutorial.Current == StageTutorial.Step.Territory && colony.Allies > 0) PointAt(OrderRect(4), "ここをクリック！", true);
+                if (tutorial.Current == StageTutorial.Step.Capture || tutorial.Current == StageTutorial.Step.Territory && colony.Allies > 0) PointAt(OrderRect(CaptureButton), "ここをクリック！", true);
                 else if (tutorial.Current == StageTutorial.Step.Food && colony.Allies > 0) PointAt(OrderRect(0), "ここをクリック！", true);
             }
         }
@@ -419,7 +424,7 @@ namespace GokiTakeover
         private void OrderButton(Rect r, int index, bool enabled)
         {
             var order = Orders[index];
-            Color accent = index == 3 ? Orange : Lime;
+            Color accent = Lime;
             bool hover = enabled && r.Contains(Event.current.mousePosition);
             Fill(r, hover ? new Color(0.09f, 0.11f, 0.08f, 0.94f) : PanelColor);
             Fill(new Rect(r.x, r.y, 4, r.height), enabled ? accent : new Color(0.35f, 0.35f, 0.33f));
@@ -428,9 +433,30 @@ namespace GokiTakeover
             GUI.color = enabled ? accent : ink;
             GUI.Label(new Rect(r.x + 16, r.y + 18, 36, 40), OrderGlyph[index], title);
             GUI.color = Color.white;
-            Ink(text, ink, () => GUI.Label(new Rect(r.x + 52, r.y + 12, r.width - 60, 30), (index + 1) + "  " + SwarmCommander.OrderName(order), text));
-            Ink(small, enabled ? new Color(0.78f, 0.77f, 0.7f) : ink, () => GUI.Label(new Rect(r.x + 52, r.y + 46, r.width - 58, 26), enabled ? OrderHelp[index] : colony.Allies > 0 ? "仲間を選択してください" : "仲間がいません", small));
+            Ink(text, ink, () => GUI.Label(new Rect(r.x + 52, r.y + 12, r.width - 60, 30), OrderKeys[index] + "  " + SwarmCommander.OrderName(order), text));
+            Ink(small, enabled ? new Color(0.78f, 0.77f, 0.7f) : ink, () => GUI.Label(new Rect(r.x + 52, r.y + 46, r.width - 58, 26), enabled ? OrderHelp[index] : "仲間がいません", small));
             if (enabled && GUI.Button(r, GUIContent.none, GUIStyle.none)) commander.Command(order);
+        }
+
+        // Drawn routes as dotted lines on the floor: the one being drawn (lime) and those allies are running (cream).
+        private void RouteLines(Camera view)
+        {
+            foreach (var route in commander.ActiveRoutes) Dotted(route.Points, view, new Color(Cream.r, Cream.g, Cream.b, 0.8f), route.EndLabel);
+            if (commander.DrawingRoute) Dotted(commander.RouteDraft, view, Lime, null);
+        }
+        private void Dotted(System.Collections.Generic.IReadOnlyList<Vector3> points, Camera view, Color color, string end)
+        {
+            for (int i = 1; i < points.Count; i++)
+            {
+                if (!ToGui(points[i - 1], view, out Vector2 a) || !ToGui(points[i], view, out Vector2 b)) continue;
+                int dots = Mathf.Max(1, Mathf.CeilToInt((b - a).magnitude / 9));
+                for (int k = 0; k < dots; k++) { Vector2 p = Vector2.Lerp(a, b, k / (float)dots); Fill(new Rect(p.x - 2, p.y - 2, 4, 4), color); }
+            }
+            if (end != null && points.Count > 0 && ToGui(points[points.Count - 1], view, out Vector2 e))
+            {
+                Fill(new Rect(e.x - 5, e.y - 5, 10, 10), color);
+                Shadowed(new Rect(e.x + 9, e.y - 10, 120, 20), "→ " + end, tiny, color);
+            }
         }
 
         private void AllyMarker(int index, Camera view)
@@ -549,7 +575,7 @@ namespace GokiTakeover
             if (Button(new Rect(370, 458, 540, 50), "タイトルへ戻る（つづきから再開できます）", true, true)) { progress.SaveOnLeave(); GameFlow.ToTitle(); }
             if (tutorial && tutorial.Active && Secondary(new Rect(370, 516, 540, 44), "ガイドを閉じる")) { tutorial.Skip(); session.Resume(); }
             else if (tutorial && !tutorial.Active && progress.Stage.tutorial && Secondary(new Rect(370, 516, 540, 44), "ガイドを表示する（今やること・次にやること）")) { tutorial.Show(); session.Resume(); }
-            GUI.Label(new Rect(370, 568, 540, 26), "Tab 軍団  1回収 2探索 3防衛 4一斉侵攻 5占拠  F 呼ぶ(長押し 全員)  E(巣) 繁殖", small);
+            GUI.Label(new Rect(370, 568, 540, 26), "Tab 軍団  1回収 2探索 3防衛 5占拠  F 呼ぶ(長押し 全員)  E(巣) 繁殖", small);
         }
 
         private void SettingsPage(Rect r)
@@ -636,7 +662,7 @@ namespace GokiTakeover
                 GUI.Label(new Rect(832, 100 + i * step, 390, 26), dangers[i], small);
             }
             GUI.Label(new Rect(816, 350, 300, 30), "操作", big);
-            GUI.Label(new Rect(816, 388, 400, 200), "WASD 移動   Shift 走る   E 回収・納品・巣・死体\n壁へ進み続けて登る   Space 降りる\nTab 軍団モード（時間は止まらない）\n1 回収  2 探索  3 防衛  4 一斉侵攻  5 占拠\nF 見える仲間を呼ぶ（長押し 全員）\n右クリック 移動先・食料・区域\nEsc ポーズ" + (Household ? "\nSpace 連打  虫取り網から脱出" : ""), small);
+            GUI.Label(new Rect(816, 388, 400, 200), "WASD 移動   Shift 走る   E 回収・納品・巣・死体\n壁へ進み続けて登る   Space 降りる\nTab 軍団モード（時間は止まらない）\n1 回収  2 探索  3 防衛  5 占拠\nF 見える仲間を呼ぶ（長押し 全員）\n軍団: 左クリック 選ぶ・指示  ドラッグ ルート\nEsc ポーズ" + (Household ? "\nSpace 連打  虫取り網から脱出" : ""), small);
 
             bool resume = GameFlow.ResumeRequested && progress.HasCheckpoint;
             if (resume)
@@ -781,7 +807,7 @@ namespace GokiTakeover
                     break;
                 }
                 case StageTutorial.Step.OpenSwarm: head = "軍団モードを開こう"; body = "部屋を見下ろして仲間に指示できる。\n時間は止まらないので人間に注意。"; keys = "Tab"; after = "を押してみよう！"; break;
-                case StageTutorial.Step.Capture: head = "占拠を命じよう"; body = "仲間が「□」区域へ向かってとどまる。\n区域を右クリックしても同じ。"; keys = "5"; after = commander.Mode == SwarmCommander.ViewMode.Swarm ? "を押すか、ボタンをクリック" : "を押してみよう！"; break;
+                case StageTutorial.Step.Capture: head = "占拠を命じよう"; body = "仲間が「□」区域へ向かってとどまる。\n区域を左クリックしても同じ。"; keys = "5"; after = commander.Mode == SwarmCommander.ViewMode.Swarm ? "を押すか、ボタンをクリック" : "を押してみよう！"; break;
                 case StageTutorial.Step.Hold:
                     head = "区域を占領しよう"; body = HoldText();
                     if (HoldNeedsAllies) { keys = "F"; after = "で見える仲間を呼ぶ（長押し 全員）"; }

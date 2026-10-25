@@ -282,7 +282,7 @@ namespace GokiTakeover.Editor
             stage.playable = true; stage.sceneName = Path.GetFileNameWithoutExtension(ScenePath);
             stage.unlocks = "stage03"; stage.unlocksTitle = "飲食店"; stage.reward = ""; stage.rewardTitle = "";
             stage.zones = ZoneNames.Select((n, i) => new StageDefinition.Zone { name = n, centre = ZoneCentres[i], radius = ZoneRadii[i] }).ToArray();
-            stage.foodGoal = 45; stage.fearGoal = 170; stage.holdSeconds = 15; stage.holdPresence = 3; stage.residentClearRate = 0.5f; stage.fearPerZone = 9;
+            stage.foodGoal = 45; stage.fearGoal = 170; stage.holdSeconds = 15; stage.holdPresence = 3; stage.holdBonusPerRoach = 0.5f; stage.holdBonusMax = 3; stage.residentClearRate = 0.5f; stage.fearPerZone = 9;
             stage.startAllies = 0; stage.allyCorpseSeconds = 20; stage.corpseHeal = 1; stage.slipperReach = 3.6f; stage.tutorial = false;
             stage.residentHuntsAllies = true; stage.allyReactionSeconds = 0.85f; stage.allyStunSeconds = 1.6f; stage.allyWoundHealSeconds = 35;
             stage.allyAlarmRadius = 2.0f; stage.allyCollectReactionScale = 1.6f;

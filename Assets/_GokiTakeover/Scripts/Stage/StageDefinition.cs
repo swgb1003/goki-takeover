@@ -38,6 +38,8 @@ namespace GokiTakeover
         public Zone[] zones = new Zone[0];                 // required territory
         [Min(1)] public float holdSeconds = 12f;           // occupation time per zone
         [Min(1)] public int holdPresence = 2;              // roaches needed in a zone (the player counts as one)
+        [Min(0)] public float holdBonusPerRoach = 0f;      // each roach over holdPresence fills the zone this much faster (0 = no bonus)
+        [Min(1)] public float holdBonusMax = 1f;           // ...up to this many times the normal speed
         [Min(0)] public float residentClearRate = 0.35f;   // per second of the resident standing in an unheld, unfinished zone
         [Min(0)] public float fearPerZone = 10f;
 
