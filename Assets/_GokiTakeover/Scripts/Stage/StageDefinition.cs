@@ -65,6 +65,9 @@ namespace GokiTakeover
         public Rect heatArea = new Rect(-7, -6, 14, 12);     // floor plan for the trap heat map (x, z, width, depth)
         public bool familyLeavesForDefence = true;           // the family walks out when the exterminator comes
         [Min(0)] public float calmSeconds = 0f;              // 「警戒」 calms to 「発見」 after this long without a sighting (0 = never)
+        [Min(0)] public float calmBelowFear = 0f;            // ...and only with fear below this (0 = half the alert threshold)
+        [Min(0)] public float fearDecayPerSecond = 0f;       // fear fades this fast when nothing is seen (0 = the colony setting)
+        [Min(1)] public int allyFearCap = 99;                // at most this many visible allies add to the fear felt (the gauge counts all)
 
         [Header("最終防衛（反応段階4: 駆除業者）")]
         [Min(10)] public float finalDefenceSeconds = 60f;

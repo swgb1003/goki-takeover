@@ -37,8 +37,8 @@ namespace GokiTakeover.Editor
         public static readonly Vector3 CagePosition = new Vector3(19.6f, 0, -1.6f);
         public static readonly string[] ZoneNames = { "テーブルの下", "冷蔵庫の前", "流し台の前", "ソファの下", "テレビの前", "おもちゃ箱のそば", "ベッドの下", "勉強机の下" };
         public static readonly Vector3[] ZoneCentres = { new Vector3(-2.3f, 0, -0.9f), new Vector3(-3.9f, 0, 2.7f), new Vector3(-0.9f, 0, 3.0f),
-            new Vector3(15.5f, 0, 4.45f), new Vector3(15.5f, 0, -3.0f), new Vector3(18.2f, 0, -2.4f), new Vector3(-1.0f, 0, 12.6f), new Vector3(12.0f, 0, 15.0f) };
-        public static readonly float[] ZoneRadii = { 1.5f, 1.5f, 1.5f, 1.5f, 1.5f, 1.3f, 1.5f, 1.3f };
+            new Vector3(15.5f, 0, 4.45f), new Vector3(15.5f, 0, -3.0f), new Vector3(18.2f, 0, -2.4f), new Vector3(-1.0f, 0, 12.6f), new Vector3(12.0f, 0, 15.5f) };
+        public static readonly float[] ZoneRadii = { 1.5f, 1.5f, 1.5f, 1.5f, 1.5f, 1.3f, 1.5f, 0.6f };   // the desk zone lies wholly under the desk
         public static readonly Rect HouseArea = new Rect(-7, -6, 28.4f, 22.4f);
         // New food in the living room: kind, position (high ones are reached by climbing), known from the start.
         private static readonly (FoodValue.Kind kind, Vector3 at, bool known)[] LivingFoods =
@@ -272,7 +272,7 @@ namespace GokiTakeover.Editor
                 if (stage.zones.Length >= ZoneNames.Length) return;
                 stage.zones = stage.zones.Concat(Enumerable.Range(stage.zones.Length, ZoneNames.Length - stage.zones.Length)
                     .Select(i => new StageDefinition.Zone { name = ZoneNames[i], centre = ZoneCentres[i], radius = ZoneRadii[i] })).ToArray();
-                stage.heatArea = HouseArea; stage.calmSeconds = 60;
+                stage.heatArea = HouseArea; stage.calmSeconds = 30;
                 stage.description = Description;
                 EditorUtility.SetDirty(stage);
                 return;
@@ -287,7 +287,7 @@ namespace GokiTakeover.Editor
             stage.residentHuntsAllies = true; stage.allyReactionSeconds = 0.85f; stage.allyStunSeconds = 1.6f; stage.allyWoundHealSeconds = 35;
             stage.allyAlarmRadius = 2.0f; stage.allyCollectReactionScale = 1.6f;
             stage.nestFumigations = new[] { 8f, 30f, 55f }; stage.nestFumigationWarning = 4.5f; stage.nestFumigationSeconds = 15; stage.nestSmokeDamageEvery = 1.1f;
-            stage.humanDetectionScale = 1.1f; stage.humanSpeedScale = 1.08f; stage.heatArea = HouseArea; stage.familyLeavesForDefence = true; stage.calmSeconds = 60;
+            stage.humanDetectionScale = 1.1f; stage.humanSpeedScale = 1.08f; stage.heatArea = HouseArea; stage.familyLeavesForDefence = true; stage.calmSeconds = 30; stage.calmBelowFear = 25; stage.fearDecayPerSecond = 1.0f; stage.allyFearCap = 1;
             stage.finalDefenceSeconds = 80; stage.foggerInterval = 11; stage.foggerWarning = 3.2f; stage.foggerDuration = 9; stage.foggerRadius = 3.0f; stage.maxFoggers = 3;
             stage.exitPoint = ExitPoint;
             stage.parSeconds = 1080; stage.fewDiscoveries = 4; stage.someDiscoveries = 10; stage.manyAllies = 8; stage.someAllies = 5;

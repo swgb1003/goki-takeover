@@ -193,7 +193,17 @@ namespace GokiTakeover.Editor
             Check(grid.Depth == StageTwoGenerator.GridDepth && grid.Walkable(new Vector3(5.7f, 0, 6.12f)) && grid.Walkable(new Vector3(11.6f, 0, 6.12f)) && grid.Walkable(new Vector3(7.12f, 0, 9.0f))
                 && !grid.Walkable(new Vector3(2.0f, 0, 6.12f)) && !grid.Walkable(new Vector3(7.12f, 0, 12.5f)) && grid.Walkable(new Vector3(-1.0f, 0, 12.6f)) && grid.Walkable(new Vector3(19.4f, 0, 12.6f)),
                 "奥の2部屋への戸口3つ（台所→寝室・リビング→子ども部屋・2部屋の間）、ベッドの下に入れる");
-            Check(Mathf.Approximately(stage.calmSeconds, 60) && stage.heatArea.yMax >= StageTwoGenerator.NorthMaxZ && stage.description == StageTwoGenerator.Description, "ステージ2の定義: 4部屋・警戒は60秒で下がる・罠の記録は家全体");
+            Check(Mathf.Approximately(stage.calmSeconds, 30) && Mathf.Approximately(stage.calmBelowFear, 25) && Mathf.Approximately(stage.fearDecayPerSecond, 1) && stage.allyFearCap == 1
+                && stage.heatArea.yMax >= StageTwoGenerator.NorthMaxZ && stage.description == StageTwoGenerator.Description,
+                "ステージ2の定義: 4部屋・恐怖は毎秒1下がる・見える仲間の恐怖は1匹分まで・恐怖25未満で30秒何も見なければ警戒が下がる・罠の記録は家全体");
+            var desk = stage.zones[7];
+            bool underDesk = true;
+            for (int k = 0; k <= 8; k++)
+            {
+                Vector3 p = desk.centre + (k == 8 ? Vector3.zero : Quaternion.Euler(0, k * 45, 0) * Vector3.forward * desk.radius) + Vector3.up * 0.15f;
+                underDesk &= Physics.Raycast(p, Vector3.up, out var roof, 3.3f, ~(1 << 2), QueryTriggerInteraction.Ignore) && roof.transform.IsChildOf(GameObject.Find("Room/KidsRoom/StudyDesk").transform);
+            }
+            Check(desk.name == "勉強机の下" && underDesk, "「勉強机の下」の区域は全体が机の下（人間・猫から見えない）");
             Check(!GameObject.Find("Phase5_Stage/BackDoor") && GameObject.Find("Phase5_Stage/HallDoor") && GameObject.Find("Room/LivingRoom/Sofa") && GameObject.Find("Room/LivingRoom/TvBoard"),
                 "勝手口はリビングへの戸口に。リビング（ソファ・テレビ台）と廊下へのドア");
             Check(GameObject.FindObjectsByType<Transform>(FindObjectsSortMode.None).Count(t => t.name == "Wall_Right" && t.parent && t.parent.name == "Room") == 3, "台所の右の壁は戸口の両側と上の3枚");

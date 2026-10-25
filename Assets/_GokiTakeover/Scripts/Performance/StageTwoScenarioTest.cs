@@ -480,6 +480,12 @@ namespace GokiTakeover
             Check(reaction.CurrentLevel == HumanReaction.Level.Noticed && reaction.Calmed == 1, "しばらく何も見なければ「警戒」から「発見」に下がる");
             yield return WaitFor(() => life.Leading(0) || life.Leading(1) || life.Leading(2), 3);
             Check(life.Leading(0) || life.Leading(1) || life.Leading(2), "落ち着くと家族は生活に戻る");
+            reaction.RestoreFear(10, reaction.FearGained);
+            reaction.DebugQuiet(5);
+            float fear = reaction.Fear, from0 = Time.time;
+            yield return WaitFor(() => Time.time - from0 >= 1.5f, 4);
+            Check(reaction.FearDecayOverride >= 1 && reaction.AllyFearCap == 1 && reaction.Fear <= fear - (Time.time - from0) * 0.9f,
+                "何も見えなければ恐怖は毎秒1ずつ下がる（" + fear.ToString("F1") + "→" + reaction.Fear.ToString("F1") + "）・見える仲間の恐怖は1匹分まで");
         }
 
         // A screenshot from a fixed view (the follow camera is paused for it, then resumes).

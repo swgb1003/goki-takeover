@@ -53,6 +53,11 @@ namespace GokiTakeover
         // family's daily life returns; sightings count again from there. 0: alertness stays for good (Stage 1 and before).
         public float CalmAfterSeconds { get; set; }
         public int Calmed { get; private set; }
+        // Stage 2 tuning (defaults: the colony settings, unchanged): how fast fear fades, how many visible allies add to
+        // the fear felt at once, and how low fear must be before 「警戒」 calms down.
+        public float FearDecayOverride { get; set; }
+        public int AllyFearCap { get; set; } = int.MaxValue;
+        public float CalmBelowFear { get; set; }
         private int alertBase;
         public string Bubble { get; private set; }
         public bool BubbleVisible => Time.time < bubbleUntil && !string.IsNullOrEmpty(Bubble);
@@ -115,7 +120,7 @@ namespace GokiTakeover
             lastState = human.State;
             sensorClock += dt;
             if (sensorClock >= 0.5f) { Sense(sensorClock); sensorClock = 0; }
-            if (Time.time - lastSightingAt > 3f) Fear = Mathf.Max(0, Fear - settings.fearDecayPerSecond * dt);
+            if (Time.time - lastSightingAt > 3f) Fear = Mathf.Max(0, Fear - (FearDecayOverride > 0 ? FearDecayOverride : settings.fearDecayPerSecond) * dt);
             EvaluateLevel();
             identifyClock += dt;
             if (identifyClock >= 0.25f) { identifyClock = 0; IdentifyBaits(); }
@@ -149,7 +154,10 @@ namespace GokiTakeover
             }
             if (VisibleAllies > 0)
             {
-                AddFear(VisibleAllies * settings.fearPerVisibleAllySecond * step);
+                // The fear felt grows with at most AllyFearCap of them; the terror gauge still counts every one.
+                float all = VisibleAllies * settings.fearPerVisibleAllySecond * step, felt = Mathf.Min(VisibleAllies, AllyFearCap) * settings.fearPerVisibleAllySecond * step;
+                AddFear(felt);
+                FearGained += all - felt;
                 if (CurrentLevel == Level.Panic && !alliesSeenInPanic && VisibleAllies >= 2) { alliesSeenInPanic = true; Say("うわああ！ 増えてる！"); }
             }
         }
@@ -177,7 +185,7 @@ namespace GokiTakeover
             if (next == Level.Alert && Fear >= settings.panicFear) next = Level.Panic;
             if (next == Level.Panic && Fear < settings.calmFear) next = Level.Alert;   // panic subsides; alertness stays
             bool calming = CalmAfterSeconds > 0 && next == Level.Alert && CurrentLevel == Level.Alert && CurrentAction == Activity.None
-                && Fear < settings.alertFear * 0.5f && Time.time - lastSightingAt >= CalmAfterSeconds && !AnyoneHunting();
+                && Fear < (CalmBelowFear > 0 ? CalmBelowFear : settings.alertFear * 0.5f) && Time.time - lastSightingAt >= CalmAfterSeconds && !AnyoneHunting();
             if (calming) { next = Level.Noticed; alertBase = seen; Calmed++; Say("気のせいだったかな…"); }
             if (next == CurrentLevel) return;
             bool rising = next > CurrentLevel;

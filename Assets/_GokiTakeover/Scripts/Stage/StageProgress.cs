@@ -144,6 +144,9 @@ namespace GokiTakeover
             reaction.StageSpeedScale = stage.humanSpeedScale;
             reaction.HeatArea = stage.heatArea;
             reaction.CalmAfterSeconds = stage.calmSeconds;
+            reaction.CalmBelowFear = stage.calmBelowFear;
+            reaction.FearDecayOverride = stage.fearDecayPerSecond;
+            reaction.AllyFearCap = stage.allyFearCap;
             reaction.ApplyLevel();
             colony.StartAlliesOverride = stage.startAllies;
             session.StrikeReach = stage.slipperReach;
