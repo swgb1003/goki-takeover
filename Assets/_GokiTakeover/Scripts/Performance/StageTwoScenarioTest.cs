@@ -546,8 +546,22 @@ namespace GokiTakeover
             Check(commander.DrawingRoute && commander.RouteDraft.Count >= 8, "ドラッグするとルートの軌跡が描かれる（" + commander.RouteDraft.Count + "点）");
             if (playerRun) yield return Capture("stage2-route-draw-720p.png");
             commander.ReleaseAt(view, Floor(line[line.Length - 1]));
-            Check(team[0].OnRoute && team[1].OnRoute && !team[2].OnRoute && commander.RoutesIssued == 1 && commander.ActiveRoutes.Count == 1,
-                "離すと選んだ2匹がルートを走り出す（ほかの仲間はそのまま）");
+            Check(!team[0].OnRoute && team[0].PendingRoute != null && team[1].PendingRoute == team[0].PendingRoute && team[2].PendingRoute == null && commander.PendingRoutes.Count == 1,
+                "離すとルートが登録され、選んだ2匹は決定を待つ（ほかの仲間はそのまま）");
+            yield return WaitFor(() => false, 0.5f);   // it may coast a little from its last order before it stops
+            Vector3 heldAt = team[0].Position;
+            yield return WaitFor(() => false, 1.0f);
+            Check(Flat(team[0].Position - heldAt).magnitude < 0.5f && !team[0].OnRoute, "決定するまでは走り出さない（" + Flat(team[0].Position - heldAt).magnitude.ToString("F2") + "m・" + team[0].State + "・" + team[0].CurrentOrder + "・待ち " + (team[0].PendingRoute != null) + "）");
+            if (playerRun) yield return Capture("stage2-route-pending-720p.png");
+            // Cancelled: a second route drawn for another ally is dropped, the first stays.
+            commander.ClearSelection();
+            commander.ClickAt(view, OnScreen(team[2].Position));
+            commander.CommandRoute(new List<Vector3> { team[2].Position, team[2].Position + new Vector3(1.5f, 0, 0), team[2].Position + new Vector3(2.5f, 0, 0.5f) }, null, -1);
+            Check(team[2].PendingRoute != null && commander.PendingRoutes.Count == 2, "ルートは何本でも登録しておける");
+            team[2].SetOrder(AllyRoach.Order.Defend, Vector3.zero);
+            Check(team[2].PendingRoute == null && commander.PendingRoutes.Count == 1, "ほかの指示を出すとその仲間のルートは取り消される");
+            Check(commander.LaunchRoutes() == 2 && team[0].OnRoute && team[1].OnRoute && !team[2].OnRoute && commander.ActiveRoutes.Count == 1 && commander.PendingRoutes.Count == 0,
+                "決定で登録したルートを一斉に走り出す（2匹）");
             // A decoy holds to its route even with the cat about to pounce on it; an ally off the route runs.
             yield return WaitFor(() => team[0].RouteIndex >= 2, 4);
             Vector3 ahead = commander.ActiveRoutes[0].Points[Mathf.Min(team[0].RouteIndex + 1, commander.ActiveRoutes[0].Points.Count - 1)];
@@ -565,6 +579,9 @@ namespace GokiTakeover
             Vector3 sofa = new Vector3(15.5f, 0, 4.45f);
             int sofaZone = progress.ZoneAt(sofa);
             commander.CommandRoute(new List<Vector3> { team[3].Position, new Vector3(6.0f, 0, -3.5f), new Vector3(9.0f, 0, -3.0f), new Vector3(13.0f, 0, 2.8f), sofa }, null, sofaZone);
+            Check(commander.CancelRoutes() == 1 && team[3].PendingRoute == null && !team[3].OnRoute, "取消で決定待ちのルートを捨てる");
+            commander.CommandRoute(new List<Vector3> { team[3].Position, new Vector3(6.0f, 0, -3.5f), new Vector3(9.0f, 0, -3.0f), new Vector3(13.0f, 0, 2.8f), sofa }, null, sofaZone);
+            commander.LaunchRoutes();
             yield return WaitFor(() => team[3].CurrentOrder == AllyRoach.Order.Capture, 15);
             Check(team[3].CurrentOrder == AllyRoach.Order.Capture && team[3].CaptureZone == sofaZone, "区域で終わるルート: 走り終えるとその区域を占拠する");
 
