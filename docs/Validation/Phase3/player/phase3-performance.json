@@ -1,0 +1,20 @@
+{
+    "unity": "6000.0.61f1",
+    "cpu": "Intel(R) Core(TM) i7-10510U CPU @ 1.80GHz",
+    "gpu": "Intel(R) UHD Graphics",
+    "width": 1280,
+    "height": 720,
+    "frames": 1786,
+    "allies": 6,
+    "seconds": 30.00615692138672,
+    "averageFps": 59.5211181640625,
+    "percentile95Ms": 16.866199493408204,
+    "maximumMs": 50.99079513549805,
+    "thirdPersonAverageFps": 59.71159362792969,
+    "swarmAverageFps": 59.740020751953128,
+    "maximumGcBytes": 62378,
+    "reservedMemoryBytes": 294675271,
+    "gcRecorderAvailable": true,
+    "memoryRecorderAvailable": true,
+    "scenario": "30秒: 0-10秒 三人称で壁登り→天井、10-20秒 軍団モードで全仲間に回収指示・人間巡回、20-30秒 三人称に戻り床を移動（仲間は回収継続）。"
+}

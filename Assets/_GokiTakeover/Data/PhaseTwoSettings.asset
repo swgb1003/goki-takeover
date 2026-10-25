@@ -1,0 +1,34 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 499a0977eff02d246b61cebc6f93374e, type: 3}
+  m_Name: PhaseTwoSettings
+  m_EditorClassIdentifier: 
+  maximumHp: 3
+  deliveryGoal: 3
+  interactionRange: 0.85
+  carryingSpeed: 0.88
+  invulnerabilitySeconds: 1.6
+  sightDistance: 7
+  sightAngle: 110
+  detectionSeconds: 0.75
+  searchSeconds: 5
+  patrolSpeed: 1.15
+  chaseSpeed: 2.2
+  attackRange: 1.7
+  attackWindup: 0.9
+  attackRecover: 0.6
+  attackCooldown: 1.8
+  strikeDistance: 1.45
+  slipperHalfWidth: 0.145
+  slipperHalfLength: 0.39
+  crushMargin: 0.28
+  stickySpeed: 0.32

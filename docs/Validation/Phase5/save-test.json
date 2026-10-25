@@ -1,0 +1,51 @@
+{
+    "version": 1,
+    "unlocked": [
+        "stage01",
+        "stage02"
+    ],
+    "records": [
+        {
+            "stage": "stage01",
+            "clears": 1,
+            "bestRating": "B",
+            "bestSeconds": 52.67804718017578,
+            "bestFood": 30
+        }
+    ],
+    "rewards": [
+        "skin_gold"
+    ],
+    "skin": "skin_gold",
+    "tutorialDone": true,
+    "guideDone": true,
+    "checkpoint": {
+        "valid": true,
+        "stage": "stage01",
+        "savedAt": "2026/10/25 13:40",
+        "food": 3,
+        "totalCollected": 0,
+        "nestLevel": 1,
+        "allies": 0,
+        "upgradesBought": 0,
+        "born": 2,
+        "upgrades": [
+            0,
+            0,
+            0,
+            0,
+            0
+        ],
+        "zones": [
+            0.0,
+            0.0,
+            12.0,
+            0.0
+        ],
+        "fear": 20.121461868286134,
+        "fearGained": 20.431840896606447,
+        "seconds": 10.801898002624512,
+        "discoveries": 2,
+        "successors": 0
+    }
+}

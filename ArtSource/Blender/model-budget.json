@@ -1,0 +1,54 @@
+{
+  "Cockroach": [
+    {
+      "lod": 0,
+      "vertices": 4052,
+      "triangles": 7768,
+      "bones": 16,
+      "renderers": 1,
+      "materials": 1
+    },
+    {
+      "lod": 1,
+      "vertices": 2112,
+      "triangles": 4024,
+      "bones": 16,
+      "renderers": 1,
+      "materials": 1
+    },
+    {
+      "lod": 2,
+      "vertices": 1040,
+      "triangles": 1940,
+      "bones": 16,
+      "renderers": 1,
+      "materials": 1
+    }
+  ],
+  "Resident": [
+    {
+      "lod": 0,
+      "vertices": 5902,
+      "triangles": 11748,
+      "bones": 19,
+      "renderers": 1,
+      "materials": 1
+    },
+    {
+      "lod": 1,
+      "vertices": 2848,
+      "triangles": 5640,
+      "bones": 19,
+      "renderers": 1,
+      "materials": 1
+    },
+    {
+      "lod": 2,
+      "vertices": 1198,
+      "triangles": 2340,
+      "bones": 19,
+      "renderers": 1,
+      "materials": 1
+    }
+  ]
+}

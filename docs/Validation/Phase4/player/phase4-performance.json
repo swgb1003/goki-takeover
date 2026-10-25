@@ -1,0 +1,22 @@
+{
+    "unity": "6000.0.61f1",
+    "cpu": "Intel(R) Core(TM) i7-10510U CPU @ 1.80GHz",
+    "gpu": "Intel(R) UHD Graphics",
+    "width": 1280,
+    "height": 720,
+    "frames": 1794,
+    "allies": 8,
+    "trapsPlaced": 2,
+    "resets": 0,
+    "damageTaken": 2,
+    "seconds": 30.001445770263673,
+    "averageFps": 59.797119140625,
+    "percentile95Ms": 16.688697814941408,
+    "maximumMs": 28.732398986816408,
+    "maximumAtSecond": 11.32304573059082,
+    "maximumGcBytes": 643372,
+    "reservedMemoryBytes": 313977679,
+    "reactionLevel": "パニック",
+    "events": "gc 643372 @10.0; gc 204976 @14.5; ",
+    "scenario": "30秒: 仲間8匹・人間はパニック（罠設置・スプレーあり）。0-10秒 三人称で人間に近づく、10-20秒 軍団モードで回収指示、20-30秒 三人称で移動。"
+}

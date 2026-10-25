@@ -1,0 +1,93 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: c1c967d872e343244a74350db149d246, type: 3}
+  m_Name: Stage02_House
+  m_EditorClassIdentifier: 
+  id: stage02
+  title: "\u4E00\u8ED2\u5BB6"
+  subtitle: "\u5BB6\u65CF\u306E\u4F4F\u3080\u4E00\u8ED2\u5BB6\uFF08\u7236\u30FB\u6BCD\u30FB\u606F\u5B50\uFF09"
+  description: "\u7236\u30FB\u6BCD\u30FB\u606F\u5B50\u304C\u66AE\u3089\u3059\u4E00\u8ED2\u5BB6\u3002\u6383\u9664\u6A5F\u3068\u866B\u53D6\u308A\u7DB2\u306B\u6CE8\u610F\u3002"
+  difficulty: 3
+  residents: 3
+  playable: 1
+  unlocks: stage03
+  unlocksTitle: "\u98F2\u98DF\u5E97"
+  reward: 
+  rewardTitle: 
+  sceneName: Phase5_Stage02_House
+  foodGoal: 45
+  fearGoal: 170
+  zones:
+  - name: "\u30C6\u30FC\u30D6\u30EB\u306E\u4E0B"
+    centre: {x: -2.3, y: 0, z: -0.9}
+    radius: 1.5
+  - name: "\u51B7\u8535\u5EAB\u306E\u524D"
+    centre: {x: -3.9, y: 0, z: 2.7}
+    radius: 1.5
+  - name: "\u6D41\u3057\u53F0\u306E\u524D"
+    centre: {x: -0.9, y: 0, z: 3}
+    radius: 1.5
+  - name: "\u30BD\u30D5\u30A1\u306E\u4E0B"
+    centre: {x: 15.5, y: 0, z: 4.45}
+    radius: 1.5
+  - name: "\u30C6\u30EC\u30D3\u306E\u524D"
+    centre: {x: 15.5, y: 0, z: -3}
+    radius: 1.5
+  - name: "\u304A\u3082\u3061\u3083\u7BB1\u306E\u305D\u3070"
+    centre: {x: 18.2, y: 0, z: -2.4}
+    radius: 1.3
+  holdSeconds: 15
+  holdPresence: 3
+  residentClearRate: 0.5
+  fearPerZone: 9
+  startAllies: 0
+  allyCorpseSeconds: 20
+  corpseHeal: 1
+  slipperReach: 3.6
+  tutorial: 0
+  residentHuntsAllies: 1
+  allyReactionSeconds: 0.85
+  allyStunSeconds: 1.6
+  allyWoundHealSeconds: 35
+  allyAlarmRadius: 2
+  allyCollectReactionScale: 1.6
+  nestFumigations:
+  - 8
+  - 30
+  - 55
+  nestFumigationWarning: 4.5
+  nestFumigationSeconds: 15
+  nestSmokeDamageEvery: 1.1
+  humanDetectionScale: 0.85
+  humanSpeedScale: 1.08
+  heatArea:
+    serializedVersion: 2
+    x: -7
+    y: -6
+    width: 28.4
+    height: 12
+  familyLeavesForDefence: 1
+  finalDefenceSeconds: 80
+  foggerInterval: 11
+  foggerWarning: 3.2
+  foggerDuration: 9
+  foggerRadius: 3
+  smokeHeight: 2.4
+  maxFoggers: 3
+  exitPoint: {x: 20.5, y: 0, z: -0.9}
+  parSeconds: 1080
+  fewDiscoveries: 4
+  someDiscoveries: 10
+  manyAllies: 8
+  someAllies: 5
+  ratingA: 6
+  ratingB: 3

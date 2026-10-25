@@ -1,0 +1,44 @@
+[
+  {
+    "actor": "Mother",
+    "lod": 0,
+    "vertices": 8841,
+    "triangles": 17574,
+    "bones": 19
+  },
+  {
+    "actor": "Mother",
+    "lod": 1,
+    "vertices": 4209,
+    "triangles": 8310,
+    "bones": 19
+  },
+  {
+    "actor": "Mother",
+    "lod": 2,
+    "vertices": 1782,
+    "triangles": 3456,
+    "bones": 19
+  },
+  {
+    "actor": "Son",
+    "lod": 0,
+    "vertices": 7095,
+    "triangles": 14130,
+    "bones": 19
+  },
+  {
+    "actor": "Son",
+    "lod": 1,
+    "vertices": 3374,
+    "triangles": 6688,
+    "bones": 19
+  },
+  {
+    "actor": "Son",
+    "lod": 2,
+    "vertices": 1404,
+    "triangles": 2748,
+    "bones": 19
+  }
+]

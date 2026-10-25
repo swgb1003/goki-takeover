@@ -1,0 +1,19 @@
+{
+    "unity": "6000.0.61f1",
+    "cpu": "Intel(R) Core(TM) i7-10510U CPU @ 1.80GHz",
+    "gpu": "Intel(R) UHD Graphics",
+    "operatingSystem": "Windows 11  (10.0.26200) 64bit",
+    "memoryMB": 16182,
+    "width": 1280,
+    "height": 720,
+    "frames": 1789,
+    "measuredSeconds": 30.012605667114259,
+    "averageFps": 59.6082878112793,
+    "percentile95FrameMs": 16.705705642700197,
+    "maximumFrameMs": 101.63359832763672,
+    "maximumGcBytes": 17788,
+    "totalReservedMemoryBytes": 287899811,
+    "gcRecorderAvailable": true,
+    "memoryRecorderAvailable": true,
+    "route": "30秒の自動歩行・ダッシュ・カメラ旋回。起動直後3秒とPNG撮影フレームを除外。"
+}

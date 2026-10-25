@@ -1,0 +1,17 @@
+{
+    "unity": "6000.0.61f1",
+    "cpu": "Intel(R) Core(TM) i7-10510U CPU @ 1.80GHz",
+    "gpu": "Intel(R) UHD Graphics",
+    "width": 1280,
+    "height": 720,
+    "frames": 1798,
+    "seconds": 30.00139617919922,
+    "averageFps": 59.930545806884769,
+    "percentile95Ms": 16.6842041015625,
+    "maximumMs": 30.321598052978517,
+    "maximumGcBytes": 20184,
+    "reservedMemoryBytes": 289626079,
+    "gcRecorderAvailable": true,
+    "memoryRecorderAvailable": true,
+    "scenario": "人間1体が巡回・感知するキッチンで30秒。主人公は巣付近を往復、視点旋回。全回収経路の性能ではない。"
+}

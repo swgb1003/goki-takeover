@@ -1,0 +1,48 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: c1c967d872e343244a74350db149d246, type: 3}
+  m_Name: Stage03_Diner
+  m_EditorClassIdentifier: 
+  id: stage03
+  title: "\u98F2\u98DF\u5E97"
+  subtitle: "\u591C\u306E\u5B9A\u98DF\u5C4B"
+  description: "\u98DF\u3079\u7269\u306E\u5B9D\u5EAB\u3002\u3060\u304C\u3001\u4EBA\u306E\u51FA\u5165\u308A\u3082\u591A\u304F\u5371\u967A\u3002"
+  difficulty: 3
+  residents: 3
+  playable: 0
+  unlocks: 
+  unlocksTitle: 
+  reward: 
+  rewardTitle: 
+  sceneName: 
+  foodGoal: 30
+  fearGoal: 120
+  zones: []
+  holdSeconds: 12
+  holdPresence: 2
+  residentClearRate: 0.35
+  fearPerZone: 10
+  finalDefenceSeconds: 60
+  foggerInterval: 13
+  foggerWarning: 3.5
+  foggerDuration: 9
+  foggerRadius: 3
+  smokeHeight: 2.4
+  maxFoggers: 2
+  exitPoint: {x: 6.2, y: 0, z: -3.6}
+  parSeconds: 720
+  fewDiscoveries: 3
+  someDiscoveries: 8
+  manyAllies: 8
+  someAllies: 5
+  ratingA: 6
+  ratingB: 3

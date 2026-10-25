@@ -1,0 +1,56 @@
+{
+  "Food_Breadcrumb": {
+    "vertices": 1610,
+    "triangles": 3200,
+    "size_m": [
+      0.609,
+      0.521,
+      0.208
+    ]
+  },
+  "Food_Rice": {
+    "vertices": 1600,
+    "triangles": 3200,
+    "size_m": [
+      0.38,
+      0.22,
+      0.094
+    ]
+  },
+  "Food_Sweets": {
+    "vertices": 1323,
+    "triangles": 3198,
+    "size_m": [
+      0.5,
+      0.53,
+      0.112
+    ]
+  },
+  "Food_Leftovers": {
+    "vertices": 1601,
+    "triangles": 3198,
+    "size_m": [
+      0.652,
+      0.324,
+      0.281
+    ]
+  },
+  "Food_Garbage": {
+    "vertices": 1612,
+    "triangles": 3200,
+    "size_m": [
+      0.763,
+      0.684,
+      0.111
+    ]
+  },
+  "Food_Bait": {
+    "vertices": 1610,
+    "triangles": 3200,
+    "size_m": [
+      0.6,
+      0.551,
+      0.2
+    ]
+  }
+}

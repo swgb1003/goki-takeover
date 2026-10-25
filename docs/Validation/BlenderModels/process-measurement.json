@@ -1,0 +1,488 @@
+﻿{
+    "scope":  "Hidden development player, explicit 1280x720 RenderTexture 3D rendering. OS presentation and overlay UI excluded.",
+    "elapsedSeconds":  49.4125837,
+    "logicalProcessors":  8,
+    "peakWorkingSetBytes":  300544000,
+    "samples":  [
+                    {
+                        "seconds":  0.0092667,
+                        "workingSetBytes":  13340672,
+                        "cpuSeconds":  0.015625
+                    },
+                    {
+                        "seconds":  0.5343068,
+                        "workingSetBytes":  100507648,
+                        "cpuSeconds":  0.140625
+                    },
+                    {
+                        "seconds":  1.0452461,
+                        "workingSetBytes":  186089472,
+                        "cpuSeconds":  0.703125
+                    },
+                    {
+                        "seconds":  1.5596862999999999,
+                        "workingSetBytes":  210149376,
+                        "cpuSeconds":  1.703125
+                    },
+                    {
+                        "seconds":  2.0674664,
+                        "workingSetBytes":  210149376,
+                        "cpuSeconds":  2.703125
+                    },
+                    {
+                        "seconds":  2.5832535,
+                        "workingSetBytes":  210149376,
+                        "cpuSeconds":  3.734375
+                    },
+                    {
+                        "seconds":  3.0973021,
+                        "workingSetBytes":  220205056,
+                        "cpuSeconds":  4.765625
+                    },
+                    {
+                        "seconds":  3.6113266999999998,
+                        "workingSetBytes":  221884416,
+                        "cpuSeconds":  5.796875
+                    },
+                    {
+                        "seconds":  4.1226574,
+                        "workingSetBytes":  289402880,
+                        "cpuSeconds":  6.25
+                    },
+                    {
+                        "seconds":  4.6364686,
+                        "workingSetBytes":  290451456,
+                        "cpuSeconds":  6.421875
+                    },
+                    {
+                        "seconds":  5.1529039,
+                        "workingSetBytes":  290783232,
+                        "cpuSeconds":  6.640625
+                    },
+                    {
+                        "seconds":  5.6691449,
+                        "workingSetBytes":  290979840,
+                        "cpuSeconds":  7.046875
+                    },
+                    {
+                        "seconds":  6.1802614,
+                        "workingSetBytes":  291307520,
+                        "cpuSeconds":  7.296875
+                    },
+                    {
+                        "seconds":  6.6913227,
+                        "workingSetBytes":  291504128,
+                        "cpuSeconds":  7.625
+                    },
+                    {
+                        "seconds":  7.2028856,
+                        "workingSetBytes":  291766272,
+                        "cpuSeconds":  7.828125
+                    },
+                    {
+                        "seconds":  7.7156009999999995,
+                        "workingSetBytes":  291893248,
+                        "cpuSeconds":  8.078125
+                    },
+                    {
+                        "seconds":  8.2287512,
+                        "workingSetBytes":  292032512,
+                        "cpuSeconds":  8.28125
+                    },
+                    {
+                        "seconds":  8.7425304,
+                        "workingSetBytes":  292098048,
+                        "cpuSeconds":  8.59375
+                    },
+                    {
+                        "seconds":  9.2540561999999991,
+                        "workingSetBytes":  292229120,
+                        "cpuSeconds":  8.90625
+                    },
+                    {
+                        "seconds":  9.7674288999999987,
+                        "workingSetBytes":  292294656,
+                        "cpuSeconds":  9.046875
+                    },
+                    {
+                        "seconds":  10.281619599999999,
+                        "workingSetBytes":  292401152,
+                        "cpuSeconds":  9.203125
+                    },
+                    {
+                        "seconds":  10.7972016,
+                        "workingSetBytes":  291749888,
+                        "cpuSeconds":  9.34375
+                    },
+                    {
+                        "seconds":  11.3203889,
+                        "workingSetBytes":  291819520,
+                        "cpuSeconds":  9.609375
+                    },
+                    {
+                        "seconds":  11.832403399999999,
+                        "workingSetBytes":  292007936,
+                        "cpuSeconds":  9.6875
+                    },
+                    {
+                        "seconds":  12.345428,
+                        "workingSetBytes":  292208640,
+                        "cpuSeconds":  9.96875
+                    },
+                    {
+                        "seconds":  12.8601905,
+                        "workingSetBytes":  292470784,
+                        "cpuSeconds":  10.109375
+                    },
+                    {
+                        "seconds":  13.371877399999999,
+                        "workingSetBytes":  292679680,
+                        "cpuSeconds":  10.40625
+                    },
+                    {
+                        "seconds":  13.8866982,
+                        "workingSetBytes":  293048320,
+                        "cpuSeconds":  10.484375
+                    },
+                    {
+                        "seconds":  14.399516799999999,
+                        "workingSetBytes":  293310464,
+                        "cpuSeconds":  10.703125
+                    },
+                    {
+                        "seconds":  14.912025499999999,
+                        "workingSetBytes":  293638144,
+                        "cpuSeconds":  10.90625
+                    },
+                    {
+                        "seconds":  15.4253368,
+                        "workingSetBytes":  293957632,
+                        "cpuSeconds":  11.1875
+                    },
+                    {
+                        "seconds":  15.942106899999999,
+                        "workingSetBytes":  294100992,
+                        "cpuSeconds":  11.34375
+                    },
+                    {
+                        "seconds":  16.4576846,
+                        "workingSetBytes":  285081600,
+                        "cpuSeconds":  11.609375
+                    },
+                    {
+                        "seconds":  16.9718662,
+                        "workingSetBytes":  287023104,
+                        "cpuSeconds":  11.84375
+                    },
+                    {
+                        "seconds":  17.4863155,
+                        "workingSetBytes":  287248384,
+                        "cpuSeconds":  12.15625
+                    },
+                    {
+                        "seconds":  18.0001319,
+                        "workingSetBytes":  287379456,
+                        "cpuSeconds":  12.34375
+                    },
+                    {
+                        "seconds":  18.5120176,
+                        "workingSetBytes":  287465472,
+                        "cpuSeconds":  12.609375
+                    },
+                    {
+                        "seconds":  19.0281237,
+                        "workingSetBytes":  287617024,
+                        "cpuSeconds":  12.75
+                    },
+                    {
+                        "seconds":  19.5375537,
+                        "workingSetBytes":  287748096,
+                        "cpuSeconds":  13.015625
+                    },
+                    {
+                        "seconds":  20.0538374,
+                        "workingSetBytes":  287703040,
+                        "cpuSeconds":  13.3125
+                    },
+                    {
+                        "seconds":  20.565051999999998,
+                        "workingSetBytes":  287694848,
+                        "cpuSeconds":  13.546875
+                    },
+                    {
+                        "seconds":  21.0805418,
+                        "workingSetBytes":  287825920,
+                        "cpuSeconds":  13.953125
+                    },
+                    {
+                        "seconds":  21.5881982,
+                        "workingSetBytes":  287891456,
+                        "cpuSeconds":  14.171875
+                    },
+                    {
+                        "seconds":  22.10102,
+                        "workingSetBytes":  288022528,
+                        "cpuSeconds":  14.328125
+                    },
+                    {
+                        "seconds":  22.6143438,
+                        "workingSetBytes":  288153600,
+                        "cpuSeconds":  14.515625
+                    },
+                    {
+                        "seconds":  23.1268524,
+                        "workingSetBytes":  288219136,
+                        "cpuSeconds":  14.859375
+                    },
+                    {
+                        "seconds":  23.639184,
+                        "workingSetBytes":  288350208,
+                        "cpuSeconds":  15.203125
+                    },
+                    {
+                        "seconds":  24.1531479,
+                        "workingSetBytes":  288481280,
+                        "cpuSeconds":  15.40625
+                    },
+                    {
+                        "seconds":  24.6639403,
+                        "workingSetBytes":  284700672,
+                        "cpuSeconds":  15.578125
+                    },
+                    {
+                        "seconds":  25.175916899999997,
+                        "workingSetBytes":  284770304,
+                        "cpuSeconds":  15.875
+                    },
+                    {
+                        "seconds":  25.6880284,
+                        "workingSetBytes":  284770304,
+                        "cpuSeconds":  16.171875
+                    },
+                    {
+                        "seconds":  26.198177299999998,
+                        "workingSetBytes":  284770304,
+                        "cpuSeconds":  16.390625
+                    },
+                    {
+                        "seconds":  26.7121258,
+                        "workingSetBytes":  284770304,
+                        "cpuSeconds":  16.625
+                    },
+                    {
+                        "seconds":  27.2231894,
+                        "workingSetBytes":  284770304,
+                        "cpuSeconds":  16.953125
+                    },
+                    {
+                        "seconds":  27.738049999999998,
+                        "workingSetBytes":  284770304,
+                        "cpuSeconds":  17.140625
+                    },
+                    {
+                        "seconds":  28.254075,
+                        "workingSetBytes":  284778496,
+                        "cpuSeconds":  17.53125
+                    },
+                    {
+                        "seconds":  28.764409099999998,
+                        "workingSetBytes":  284778496,
+                        "cpuSeconds":  17.75
+                    },
+                    {
+                        "seconds":  29.279173999999998,
+                        "workingSetBytes":  284778496,
+                        "cpuSeconds":  17.921875
+                    },
+                    {
+                        "seconds":  29.7924509,
+                        "workingSetBytes":  284778496,
+                        "cpuSeconds":  18.015625
+                    },
+                    {
+                        "seconds":  30.3100977,
+                        "workingSetBytes":  284889088,
+                        "cpuSeconds":  18.09375
+                    },
+                    {
+                        "seconds":  30.829536599999997,
+                        "workingSetBytes":  284893184,
+                        "cpuSeconds":  18.15625
+                    },
+                    {
+                        "seconds":  31.3588632,
+                        "workingSetBytes":  284893184,
+                        "cpuSeconds":  18.296875
+                    },
+                    {
+                        "seconds":  31.869303,
+                        "workingSetBytes":  284893184,
+                        "cpuSeconds":  18.484375
+                    },
+                    {
+                        "seconds":  32.3892477,
+                        "workingSetBytes":  284893184,
+                        "cpuSeconds":  18.71875
+                    },
+                    {
+                        "seconds":  32.9027996,
+                        "workingSetBytes":  284893184,
+                        "cpuSeconds":  18.875
+                    },
+                    {
+                        "seconds":  33.419268699999996,
+                        "workingSetBytes":  284893184,
+                        "cpuSeconds":  19.078125
+                    },
+                    {
+                        "seconds":  33.9333543,
+                        "workingSetBytes":  284893184,
+                        "cpuSeconds":  19.25
+                    },
+                    {
+                        "seconds":  34.4507906,
+                        "workingSetBytes":  284893184,
+                        "cpuSeconds":  19.359375
+                    },
+                    {
+                        "seconds":  34.9655005,
+                        "workingSetBytes":  284893184,
+                        "cpuSeconds":  19.5
+                    },
+                    {
+                        "seconds":  35.4807191,
+                        "workingSetBytes":  284893184,
+                        "cpuSeconds":  19.59375
+                    },
+                    {
+                        "seconds":  35.9915197,
+                        "workingSetBytes":  284893184,
+                        "cpuSeconds":  19.765625
+                    },
+                    {
+                        "seconds":  36.505195,
+                        "workingSetBytes":  284893184,
+                        "cpuSeconds":  19.828125
+                    },
+                    {
+                        "seconds":  37.0135546,
+                        "workingSetBytes":  284893184,
+                        "cpuSeconds":  19.984375
+                    },
+                    {
+                        "seconds":  37.5236016,
+                        "workingSetBytes":  284893184,
+                        "cpuSeconds":  20.0625
+                    },
+                    {
+                        "seconds":  38.0373533,
+                        "workingSetBytes":  284893184,
+                        "cpuSeconds":  20.140625
+                    },
+                    {
+                        "seconds":  38.5559572,
+                        "workingSetBytes":  284893184,
+                        "cpuSeconds":  20.21875
+                    },
+                    {
+                        "seconds":  39.0705701,
+                        "workingSetBytes":  284893184,
+                        "cpuSeconds":  20.296875
+                    },
+                    {
+                        "seconds":  39.5875264,
+                        "workingSetBytes":  284893184,
+                        "cpuSeconds":  20.40625
+                    },
+                    {
+                        "seconds":  40.0997185,
+                        "workingSetBytes":  284893184,
+                        "cpuSeconds":  20.515625
+                    },
+                    {
+                        "seconds":  40.638205899999996,
+                        "workingSetBytes":  284893184,
+                        "cpuSeconds":  20.625
+                    },
+                    {
+                        "seconds":  41.1756515,
+                        "workingSetBytes":  284893184,
+                        "cpuSeconds":  20.65625
+                    },
+                    {
+                        "seconds":  41.7169471,
+                        "workingSetBytes":  284893184,
+                        "cpuSeconds":  20.765625
+                    },
+                    {
+                        "seconds":  42.225679199999995,
+                        "workingSetBytes":  284893184,
+                        "cpuSeconds":  20.9375
+                    },
+                    {
+                        "seconds":  42.7367102,
+                        "workingSetBytes":  284893184,
+                        "cpuSeconds":  21.078125
+                    },
+                    {
+                        "seconds":  43.255369599999995,
+                        "workingSetBytes":  284893184,
+                        "cpuSeconds":  21.28125
+                    },
+                    {
+                        "seconds":  43.769352399999995,
+                        "workingSetBytes":  284893184,
+                        "cpuSeconds":  21.421875
+                    },
+                    {
+                        "seconds":  44.285992799999995,
+                        "workingSetBytes":  284893184,
+                        "cpuSeconds":  21.53125
+                    },
+                    {
+                        "seconds":  44.799318,
+                        "workingSetBytes":  284893184,
+                        "cpuSeconds":  21.625
+                    },
+                    {
+                        "seconds":  45.3124833,
+                        "workingSetBytes":  284893184,
+                        "cpuSeconds":  21.765625
+                    },
+                    {
+                        "seconds":  45.8293178,
+                        "workingSetBytes":  284893184,
+                        "cpuSeconds":  21.890625
+                    },
+                    {
+                        "seconds":  46.3327575,
+                        "workingSetBytes":  284893184,
+                        "cpuSeconds":  21.9375
+                    },
+                    {
+                        "seconds":  46.848861299999996,
+                        "workingSetBytes":  284893184,
+                        "cpuSeconds":  22.015625
+                    },
+                    {
+                        "seconds":  47.3595627,
+                        "workingSetBytes":  288776192,
+                        "cpuSeconds":  22.25
+                    },
+                    {
+                        "seconds":  47.8743304,
+                        "workingSetBytes":  288776192,
+                        "cpuSeconds":  22.28125
+                    },
+                    {
+                        "seconds":  48.3890056,
+                        "workingSetBytes":  300544000,
+                        "cpuSeconds":  22.34375
+                    },
+                    {
+                        "seconds":  48.902259699999995,
+                        "workingSetBytes":  300503040,
+                        "cpuSeconds":  22.34375
+                    }
+                ]
+}

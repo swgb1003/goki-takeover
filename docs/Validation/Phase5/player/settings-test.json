@@ -1,0 +1,21 @@
+{
+    "version": 1,
+    "mouseSensitivity": 2.0,
+    "masterVolume": 0.800000011920929,
+    "quality": 1,
+    "speechBubbles": true,
+    "cameraShake": true,
+    "fullscreen": true,
+    "codex": [
+        "resident",
+        "food_Breadcrumb",
+        "spray",
+        "fogger",
+        "sticky",
+        "food_Rice",
+        "food_Sweets",
+        "food_Leftovers",
+        "food_Garbage",
+        "slipper"
+    ]
+}

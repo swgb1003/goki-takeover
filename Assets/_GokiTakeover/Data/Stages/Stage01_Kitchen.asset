@@ -1,0 +1,60 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: c1c967d872e343244a74350db149d246, type: 3}
+  m_Name: Stage01_Kitchen
+  m_EditorClassIdentifier: 
+  id: stage01
+  title: "\u30EF\u30F3\u30EB\u30FC\u30E0\u306E\u30AD\u30C3\u30C1\u30F3"
+  subtitle: "\u4E00\u4EBA\u66AE\u3089\u3057\u306E\u90E8\u5C4B"
+  description: "\u3072\u3068\u308A\u66AE\u3089\u3057\u306E\u90E8\u5C4B\u3002\u6CB9\u65AD\u3057\u304D\u3063\u305F\u4EBA\u9593\u306E\u30B9\u30AD\u3092\u7A81\u3051\u3002"
+  difficulty: 1
+  residents: 1
+  playable: 1
+  unlocks: stage02
+  unlocksTitle: "\u4E00\u8ED2\u5BB6"
+  reward: skin_gold
+  rewardTitle: "\u898B\u305F\u76EE\u300C\u91D1\u8272\u306E\u7532\u6BBB\u300D"
+  sceneName: Phase5_Stage01_Kitchen
+  foodGoal: 30
+  fearGoal: 120
+  zones:
+  - name: "\u30C6\u30FC\u30D6\u30EB\u306E\u4E0B"
+    centre: {x: -2.3, y: 0, z: -0.9}
+    radius: 1.5
+  - name: "\u51B7\u8535\u5EAB\u306E\u524D"
+    centre: {x: -3.9, y: 0, z: 2.7}
+    radius: 1.5
+  - name: "\u6D41\u3057\u53F0\u306E\u524D"
+    centre: {x: -0.9, y: 0, z: 3}
+    radius: 1.5
+  - name: "\u98DF\u54C1\u68DA\u306E\u305D\u3070"
+    centre: {x: 6, y: 0, z: -0.6}
+    radius: 1.4
+  holdSeconds: 12
+  holdPresence: 2
+  residentClearRate: 0.35
+  fearPerZone: 10
+  finalDefenceSeconds: 60
+  foggerInterval: 13
+  foggerWarning: 3.5
+  foggerDuration: 9
+  foggerRadius: 3
+  smokeHeight: 2.4
+  maxFoggers: 2
+  exitPoint: {x: 6.2, y: 0, z: -3.6}
+  parSeconds: 720
+  fewDiscoveries: 3
+  someDiscoveries: 8
+  manyAllies: 8
+  someAllies: 5
+  ratingA: 6
+  ratingB: 3

@@ -1,0 +1,20 @@
+[
+  {
+    "lod": 0,
+    "vertices": 8283,
+    "triangles": 16486,
+    "bones": 19
+  },
+  {
+    "lod": 1,
+    "vertices": 3909,
+    "triangles": 7738,
+    "bones": 19
+  },
+  {
+    "lod": 2,
+    "vertices": 1615,
+    "triangles": 3150,
+    "bones": 19
+  }
+]

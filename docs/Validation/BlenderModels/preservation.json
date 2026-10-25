@@ -1,0 +1,11 @@
+﻿{
+    "baselineCount":  278,
+    "unchangedCount":  277,
+    "changed":  [
+                    "C:\\Users\\swgb1\\orca\\projects\\ゴキ\\docs\\THIRD_PARTY_ASSETS.md"
+                ],
+    "missing":  [
+
+                ],
+    "note":  "Only documented README and asset provenance updates are intentional. Original game assets/scripts/scenes/settings must stay unchanged."
+}

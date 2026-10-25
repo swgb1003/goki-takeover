@@ -1,0 +1,8 @@
+﻿{
+    "aliveAfterSixSeconds":  true,
+    "graphicsInitialized":  true,
+    "errors":  [
+
+               ],
+    "scope":  "Hidden normal Windows release startup smoke only, stopped owned process after six seconds."
+}
