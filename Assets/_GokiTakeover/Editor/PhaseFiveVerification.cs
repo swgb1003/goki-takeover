@@ -80,7 +80,7 @@ namespace GokiTakeover.Editor
                     && new SerializedObject(UnityEngine.Object.FindFirstObjectByType<StageProgress>()).FindProperty("sprayer").objectReferenceValue is CeilingSprayer,
                     "駆除業者の噴霧器（左手のノズル先端・天井への予告と霧）");
                 var stageViewer = UnityEngine.Object.FindFirstObjectByType<CodexViewer>();
-                Check(stageViewer && stageViewer.Count == 9 && new SerializedObject(UnityEngine.Object.FindFirstObjectByType<PhaseFiveHud>()).FindProperty("codexViewer").objectReferenceValue == stageViewer, "ポーズの図鑑に食料5種・住人・駆除業者・母・息子の回転台");
+                Check(stageViewer && stageViewer.Count == 10 && new SerializedObject(UnityEngine.Object.FindFirstObjectByType<PhaseFiveHud>()).FindProperty("codexViewer").objectReferenceValue == stageViewer, "ポーズの図鑑に食料5種・住人・駆除業者・母・息子・猫の回転台");
                 var door = GameObject.Find("Phase5_Stage/BackDoor");
                 Check(door && door.GetComponentsInChildren<Collider>().Length == 0, "人間が出ていく勝手口（当たり判定なし）");
                 // The kitchen registers its NavMesh at runtime; add it briefly to sample the exit.
@@ -105,7 +105,7 @@ namespace GokiTakeover.Editor
                     "タイトル: ゲーム処理のコンポーネントなし（見た目だけ）");
                 var title = UnityEngine.Object.FindFirstObjectByType<TitleMenu>();
                 Check(title && title.StageCount == 3 && UnityEngine.Object.FindFirstObjectByType<TitleBackdrop>(), "タイトルメニュー（ステージ3つ）と背景の動き");
-                Check(new SerializedObject(title).FindProperty("codexViewer").objectReferenceValue is CodexViewer titleViewer && titleViewer.Count == 9, "タイトルの図鑑にも同じ回転台");
+                Check(new SerializedObject(title).FindProperty("codexViewer").objectReferenceValue is CodexViewer titleViewer && titleViewer.Count == 10, "タイトルの図鑑にも同じ回転台");
                 Check(Path.GetFileNameWithoutExtension(PhaseFiveGenerator.TitleScene) == GameFlow.TitleScene && Path.GetFileNameWithoutExtension(PhaseFiveGenerator.StageScene) == stages[0].sceneName, "画面遷移のシーン名が一致");
                 AssetDatabase.SaveAssets();
                 File.WriteAllText(Output + "/editmode.txt", "PASS: " + checks + " checks\n");
@@ -146,6 +146,14 @@ namespace GokiTakeover.Editor
             Check(!GameObject.Find("Phase5_Stage/BackDoor") && GameObject.Find("Phase5_Stage/HallDoor") && GameObject.Find("Room/LivingRoom/Sofa") && GameObject.Find("Room/LivingRoom/TvBoard"),
                 "勝手口はリビングへの戸口に。リビング（ソファ・テレビ台）と廊下へのドア");
             Check(GameObject.FindObjectsByType<Transform>(FindObjectsSortMode.None).Count(t => t.name == "Wall_Right" && t.parent && t.parent.name == "Room") == 3, "台所の右の壁は戸口の両側と上の3枚");
+            var cat = UnityEngine.Object.FindFirstObjectByType<PetCat>();
+            var catLink = cat ? new SerializedObject(cat) : null;
+            var catGrid = catLink != null ? catLink.FindProperty("grid").objectReferenceValue as AllyNavGrid : null;
+            Check(cat && cat.GetComponentInChildren<CatAnimator>() && cat.GetComponentsInChildren<SkinnedMeshRenderer>(true).Any(r => r.sharedMesh && r.sharedMesh.name == "Cat_Detail0" && r.sharedMesh.vertexCount > 3000)
+                && GameObject.Find("Room/LivingRoom/CatBed"), "飼い猫（Blenderモデル・専用の骨格と動き）と寝床");
+            Check(catGrid == AssetDatabase.LoadAssetAtPath<AllyNavGrid>(StageTwoGenerator.CatGridPath) && catGrid.Walkable(StageTwoGenerator.CatBed) && !catGrid.Walkable(new Vector3(15.5f, 0, 4.45f))
+                && !catGrid.Walkable(session.Nest.position) && catGrid.Walkable(new Vector3(7.12f, 0, -3.5f)) && catGrid.FindPath(StageTwoGenerator.CatBed, new Vector3(-4.0f, 0, 0.6f), path),
+                "猫の床: 寝床から台所まで歩ける・ソファの下と巣には入れない");
             var navigation = (UnityEngine.AI.NavMeshData)new SerializedObject(UnityEngine.Object.FindFirstObjectByType<KitchenNavigation>()).FindProperty("data").objectReferenceValue;
             Check(navigation == AssetDatabase.LoadAssetAtPath<UnityEngine.AI.NavMeshData>(StageTwoGenerator.NavPath), "家全体の人間用NavMesh");
             var instance = UnityEngine.AI.NavMesh.AddNavMeshData(navigation);

@@ -11,7 +11,7 @@ namespace GokiTakeover
     public static class CodexModelPage
     {
         // Indexes into CodexViewer's models: the five FoodValue.Kinds, then the two people.
-        public const int ResidentModel = 5, ExterminatorModel = 6, MotherModel = 7, SonModel = 8;
+        public const int ResidentModel = 5, ExterminatorModel = 6, MotherModel = 7, SonModel = 8, CatModel = 9;
         public struct Page
         {
             public int model;
@@ -70,6 +70,10 @@ namespace GokiTakeover
                     nickname = "夏休みの昆虫ハンター",
                     body = "8歳。カブトムシとゴキブリの区別がまだ曖昧。足が速く、近づくと虫取り網を振り下ろしてくる。捕まったら Space 連打で網から抜け出せ。仲間は虫かごに入れられるが、かごの前で E を押せば助け出せる。",
                     rating = "★★★☆☆  「悪気がないのがいちばん怖い」" },
+                new Page { model = CatModel, id = "cat", name = "飼い猫ミケ", badge = "▲ ★★★", tag = "武器: 飛びかかり・猫パンチ",
+                    nickname = "動くものは全部おもちゃ",
+                    body = "一軒家の三毛猫。たいていソファの横の寝床で寝ているが、床を動くものを見つけると目の色が変わる。じりじり忍び寄り、お尻を振ったら飛びかかってくる。止まっていれば興味をなくす。家具の下・壁・天井には来ない。",
+                    rating = "★★★☆☆  「かわいい顔をした天敵」" },
             }
         };
 

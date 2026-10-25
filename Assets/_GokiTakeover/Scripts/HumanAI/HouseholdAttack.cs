@@ -63,7 +63,7 @@ namespace GokiTakeover
             point = Flat(commander.Allies[ally].Position);
             return commander.Allies[ally].Active;
         }
-        protected bool CanStart => Allowed && session.IsRunning && !human.Suspended && human.State != HumanAIController.HumanState.Attack && Time.time >= cooldownUntil;
+        protected bool CanStart => Allowed && session.IsRunning && human.isActiveAndEnabled && !human.Suspended && human.State != HumanAIController.HumanState.Attack && Time.time >= cooldownUntil;
 
         protected void Hold()
         {

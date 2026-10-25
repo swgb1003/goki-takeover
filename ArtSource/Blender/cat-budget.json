@@ -1,0 +1,23 @@
+[
+  {
+    "actor": "Cat",
+    "lod": 0,
+    "vertices": 5862,
+    "triangles": 11680,
+    "bones": 22
+  },
+  {
+    "actor": "Cat",
+    "lod": 1,
+    "vertices": 2722,
+    "triangles": 5400,
+    "bones": 22
+  },
+  {
+    "actor": "Cat",
+    "lod": 2,
+    "vertices": 1102,
+    "triangles": 2160,
+    "bones": 22
+  }
+]

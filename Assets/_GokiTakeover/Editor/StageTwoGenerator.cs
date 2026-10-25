@@ -25,6 +25,8 @@ namespace GokiTakeover.Editor
         public const string GridPath = GeneratedAssets.Root + "/Data/Stage02AllyGrid.asset";
         public const string NavPath = GeneratedAssets.Root + "/Data/Stage02Navigation.asset";
         public const string FanPath = GeneratedAssets.Root + "/Art/Meshes/Stage02_VacuumFan.asset";
+        public const string CatGridPath = GeneratedAssets.Root + "/Data/Stage02CatGrid.asset";
+        public static readonly Vector3 CatBed = new Vector3(9.3f, 0, 4.6f);
         // The living room: x 7.24 .. 21.24 (the kitchen's right wall is shared), z -6 .. 6, same ceiling.
         public const float LivingMinX = 7.24f, LivingMaxX = 21.24f, DoorZMin = -5.0f, DoorZMax = -2.0f, DoorHeight = 4.4f;
         public static readonly Vector3 GridOrigin = new Vector3(-7, 0, -6);
@@ -204,6 +206,21 @@ namespace GokiTakeover.Editor
             net.Configure(session, commander, son, son.GetComponentInChildren<BlenderHumanAnimator>(), "son");
             net.ConfigureVisuals(netRing, netFill, cover, cage);
 
+            // ---- The house cat ----
+            BuildCatBed(living);
+            Physics.SyncTransforms();
+            var catGrid = BakeCatGrid(room, session);
+            var catRoot = GeneratedAssets.Empty("Pet_Cat", stageRoot, CatBed);
+            var catSkin = BlenderModelIntegration.CreateSkin("Cat", catRoot);
+            foreach (var t in catRoot.GetComponentsInChildren<Transform>(true)) t.gameObject.layer = 2;   // never blocks sight lines
+            var catRing = P.Part("CatRing", fx, ring, warning, Vector3.zero, Vector3.one, false, false);
+            var catFill = P.Part("CatFill", fx, disc, fill, Vector3.zero, Vector3.one, false, false);
+            catRing.gameObject.SetActive(false); catFill.gameObject.SetActive(false);
+            var catBody = catSkin.root.AddComponent<CatAnimator>();
+            var cat = catRoot.gameObject.AddComponent<PetCat>();
+            catBody.Configure(cat, catSkin.bones);
+            cat.Configure(session, commander, progress, catGrid, catBody, catRing, catFill, catSkin.root.transform, CatBed);
+
             // ---- Exit door to the hall (the family evacuates and the father leaves by it) ----
             var door = GeneratedAssets.Material("Phase5_Door", new Color(0.34f, 0.21f, 0.12f));
             var frame = GeneratedAssets.Material("Phase5_DoorFrame", new Color(0.78f, 0.74f, 0.64f));
@@ -232,8 +249,8 @@ namespace GokiTakeover.Editor
         public static void FillDefinition(StageDefinition stage)
         {
             if (stage.playable && stage.zones.Length > 0) return;   // already set up: keep any tuning
-            stage.id = "stage02"; stage.title = "一軒家"; stage.subtitle = "家族の住む一軒家（父・母・息子）"; stage.difficulty = 3; stage.residents = 3;
-            stage.description = "父・母・息子が暮らす一軒家。掃除機と虫取り網に注意。";
+            stage.id = "stage02"; stage.title = "一軒家"; stage.subtitle = "家族と猫の住む一軒家（父・母・息子・ミケ）"; stage.difficulty = 3; stage.residents = 3;
+            stage.description = "父・母・息子と猫が暮らす一軒家。掃除機・網・猫に注意。";
             stage.playable = true; stage.sceneName = Path.GetFileNameWithoutExtension(ScenePath);
             stage.unlocks = "stage03"; stage.unlocksTitle = "飲食店"; stage.reward = ""; stage.rewardTitle = "";
             stage.zones = ZoneNames.Select((n, i) => new StageDefinition.Zone { name = n, centre = ZoneCentres[i], radius = ZoneRadii[i] }).ToArray();
@@ -428,6 +445,54 @@ namespace GokiTakeover.Editor
             var cage = cageRoot.gameObject.AddComponent<BugCage>();
             cage.Configure(session, commander, prisoners);
             return cage;
+        }
+
+        /// <summary>A round cushion bed beside the sofa with a food bowl: where the cat naps.</summary>
+        private static void BuildCatBed(Transform living)
+        {
+            var cushion = P.Material("Stage02_CatBed", new Color(0.55f, 0.24f, 0.22f), 0.05f);
+            var inner = P.Material("Stage02_CatBedInner", new Color(0.86f, 0.8f, 0.7f), 0.05f);
+            var bed = GeneratedAssets.Empty("CatBed", living, CatBed);
+            P.Rod("Rim", bed, Vector3.zero, new Vector3(0, 0.32f, 0), 2.2f, cushion);
+            P.Rod("Cushion", bed, new Vector3(0, 0.02f, 0), new Vector3(0, 0.36f, 0), 1.8f, inner);
+            P.Sphere("Bowl", living, CatBed + new Vector3(1.5f, 0.12f, 0.6f), new Vector3(0.7f, 0.24f, 0.7f), P.Material("Stage02_CatBowl", new Color(0.2f, 0.42f, 0.7f), 0.6f));
+        }
+        /// <summary>
+        /// The cat's own floor: a cat-sized probe (radius 0.55 at height 1.0) instead of a roach's, so it cannot go under the
+        /// sofa or the coffee table, and never into the nest (the hollow cabinet), whatever fits.
+        /// </summary>
+        public static AllyNavGrid BakeCatGrid(Transform room, PhaseTwoSession session)
+        {
+            const float cell = 0.25f;
+            var data = new byte[GridWidth * GridDepth];
+            var hits = new Collider[16];
+            for (int z = 0; z < GridDepth; z++)
+            for (int x = 0; x < GridWidth; x++)
+            {
+                var centre = GridOrigin + new Vector3((x + 0.5f) * cell, 1.0f, (z + 0.5f) * cell);
+                int count = Physics.OverlapSphereNonAlloc(centre, 0.55f, hits, ~0, QueryTriggerInteraction.Ignore);
+                bool blocked = session.InNest(new Vector3(centre.x, 0.1f, centre.z));
+                for (int i = 0; i < count && !blocked; i++) blocked = hits[i].transform.IsChildOf(room);
+                data[z * GridWidth + x] = blocked ? AllyNavGrid.Blocked : AllyNavGrid.Open;
+            }
+            GeneratedAssets.RequireOwned(CatGridPath);
+            var grid = AssetDatabase.LoadAssetAtPath<AllyNavGrid>(CatGridPath);
+            bool created = !grid;
+            if (created) grid = ScriptableObject.CreateInstance<AllyNavGrid>();
+            grid.Bake(GridOrigin, cell, GridWidth, GridDepth, data);
+            if (created) { AssetDatabase.CreateAsset(grid, CatGridPath); GeneratedAssets.Mark(grid); }
+            EditorUtility.SetDirty(grid);
+            return grid;
+        }
+        /// <summary>The cat's LOD0 mesh for the encyclopedia (imported once if the stage has not been generated yet).</summary>
+        public static Mesh CatModel()
+        {
+            string path = BlenderModelIntegration.Root + "/Meshes/Cat_Detail0.asset";
+            var mesh = AssetDatabase.LoadAssetAtPath<Mesh>(path);
+            if (mesh) return mesh;
+            var skin = BlenderModelIntegration.CreateSkin("Cat", null);
+            UnityEngine.Object.DestroyImmediate(skin.root);
+            return AssetDatabase.LoadAssetAtPath<Mesh>(path);
         }
 
         // ---------------- Navigation ----------------

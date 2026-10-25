@@ -142,6 +142,9 @@ namespace GokiTakeover
             foreach (var b in reaction.Baits)
                 if (b.IsArmed && b.Identified && Vector3.Distance(b.transform.position, session.Player.position) < 9)
                     Marker(b.transform.position + Vector3.up * 0.45f, "! 毒餌", Orange, false);
+            var napper = Pet;
+            if (napper && napper.Current == PetCat.Phase.Nap && Vector3.Distance(napper.transform.position, session.Player.position) < 9)
+                Marker(napper.transform.position + Vector3.up * 1.1f, "Zzz", Muted, false, null, 0.8f);
             var cage = Cage;
             if (cage && cage.Count > 0 && Vector3.Distance(cage.transform.position, session.Player.position) < 14)
                 Marker(cage.transform.position + Vector3.up * 1.6f, "◇ 虫かご  仲間 " + cage.Count + "匹", Lime, false);
@@ -351,6 +354,9 @@ namespace GokiTakeover
                 }
                 var cage = Cage;
                 if (cage && cage.Count > 0) Marker(cage.transform.position + Vector3.up * 1.4f, "◇ 虫かご " + cage.Count + "匹", Lime, false, view);
+                var cat = Pet;
+                if (cat && cat.gameObject.activeInHierarchy && cat.Current != PetCat.Phase.Gone)
+                    Marker(cat.transform.position + Vector3.up * 1.9f, "▲ 猫・" + cat.Label, cat.Stalking ? Orange : Cream, false, view);
                 Marker(session.Motor.FootPoint + Vector3.up * 0.6f, "◆ あなた", Lime, false, view);
                 for (int i = 0; i < commander.Allies.Count; i++) AllyMarker(i, view);
             }
@@ -589,8 +595,8 @@ namespace GokiTakeover
         private static readonly string[] HouseDangers =
         {
             "父のスリッパ  ―  橙の枠から逃げる。台・低い壁も届く", "母の掃除機  ―  橙の扇に吸い込まれる。横へ逃げる",
-            "息子の虫取り網  ―  捕まったら Space 連打。仲間は虫かごへ", "粘着シート・毒餌  ―  踏まない・拾わない",
-            "殺虫スプレー  ―  父がパニック中。物陰に隠れる", "燻煙剤  ―  最終防衛。家族は避難、業者が来る"
+            "息子の虫取り網  ―  捕まったら Space 連打。仲間は虫かごへ", "罠・毒餌・スプレー  ―  父が警戒・パニックで使う",
+            "飼い猫  ―  動くものに飛びかかる。止まればやり過ごせる", "燻煙剤  ―  最終防衛。家族は避難、業者が来る"
         };
         private void Briefing()
         {
@@ -1041,6 +1047,9 @@ namespace GokiTakeover
         private VacuumAttack Vacuum { get { foreach (var a in progress.Attacks) if (a is VacuumAttack v) return v; return null; } }
         private BugNetAttack Net { get { foreach (var a in progress.Attacks) if (a is BugNetAttack n) return n; return null; } }
         private BugCage Cage { get { var net = Net; return net ? net.Cage : null; } }
+        private PetCat pet;
+        private bool petLooked;
+        private PetCat Pet { get { if (!petLooked) { petLooked = true; pet = FindFirstObjectByType<PetCat>(); } return pet; } }
         // The mother's vacuum and the son's net outrank the other warnings: they are the ones to dodge right now.
         private bool FamilyBanner()
         {
@@ -1052,6 +1061,9 @@ namespace GokiTakeover
                 return true;
             }
             if (net && net.Current == BugNetAttack.Phase.Windup && net.Inside(session.Motor.FootPoint)) { Banner("虫取り網が来る！  橙の輪から逃げろ", 366, Orange); return true; }
+            var cat = Pet;
+            if (cat && (cat.Current == PetCat.Phase.Crouch || cat.Current == PetCat.Phase.Leap) && cat.InRing(session.Motor.FootPoint)) { Banner("猫が飛びかかる！  橙の輪から逃げろ", 366, Orange); return true; }
+            if (cat && cat.Current == PetCat.Phase.Stalk && cat.TargetIsPlayer) { Banner("猫に狙われている…  止まればやり過ごせる", 366, Orange); return true; }
             if (vacuum && (vacuum.Current == VacuumAttack.Phase.Aim || vacuum.Sucking))
             {
                 bool inFan = vacuum.InFan(session.Motor.FootPoint);
