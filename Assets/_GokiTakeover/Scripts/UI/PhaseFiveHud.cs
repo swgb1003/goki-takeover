@@ -203,15 +203,16 @@ namespace GokiTakeover
             else if (spray.Telegraphing || spray.Spraying) Banner("殺虫スプレー！  物陰か橙の扇の外へ", 366, Orange);
             else if (progress.Current == StageProgress.Phase.Retreat) Banner("人間が部屋から逃げていく…！", 366, Lime);
             else if (watcher.State == HumanAIController.HumanState.Attack && !watcher.TargetIsPlayer)
-                Banner("仲間がスリッパに狙われている！", 366, Orange);
+                Banner("仲間が" + watcher.WeaponName + "に狙われている！", 366, Orange);
             else if (watcher.State == HumanAIController.HumanState.Attack)
-                Banner(session.PlayerStrikeable ? (session.Motor.IsClimbing || session.Motor.FootPoint.y > 0.5f ? "スリッパ注意！  ここも届く — 上へ逃げろ" : "スリッパ注意！  橙の枠からダッシュで逃げろ") : "スリッパ注意！  高い所なら届かない", 366, Orange);
+                Banner(session.PlayerStrikeable ? (session.Motor.IsClimbing || session.Motor.FootPoint.y > 0.5f ? watcher.WeaponName + "注意！  ここも届く — 上へ逃げろ" : watcher.WeaponName + "注意！  橙の枠からダッシュで逃げろ") : watcher.WeaponName + "注意！  高い所なら届かない", 366, Orange);
             else if (reaction.CurrentAction == HumanReaction.Activity.Walking || reaction.CurrentAction == HumanReaction.Activity.Placing)
                 Banner("人間が罠を仕掛けに行く…", 366, Orange);
             else if (watcher.State == HumanAIController.HumanState.Chase)
-                Banner(watcher.TargetIsPlayer ? (Household ? watcher.Label + "に見つかった！  家具の下か壁の上へ" : "見つかった！  家具の下か壁の上へ逃げよう")
-                    : Household ? "仲間が見つかった！  " + watcher.Label + "が追いかけている" : "仲間が見つかった！  人間が追いかけている", 366, Orange);
+                Banner(watcher.TargetIsPlayer ? (People ? watcher.Label + "に見つかった！  家具の下か壁の上へ" : "見つかった！  家具の下か壁の上へ逃げよう")
+                    : People ? "仲間が見つかった！  " + watcher.Label + "が追いかけている" : "仲間が見つかった！  人間が追いかけている", 366, Orange);
             else if (StartledNearby) Banner("物音に気づかれた！  止まるか物陰へ", 366, Orange);
+            else if (Floors && StaffStatusBanner()) { }
             SpeechBubble();
             if (Guiding) { GuideTargets(Camera.main); GuidePanel(GuideNormal, tutorial.Current, true); }
             if (Cursor.lockState != CursorLockMode.Locked) Banner("クリックして操作を再開", 416, Lime);
@@ -363,7 +364,7 @@ namespace GokiTakeover
                     if (!session.HumanPresent(h)) continue;
                     var human = session.HumanAt(h);
                     bool alarm = human.State != HumanAIController.HumanState.Routine || h == 0 && reaction.CurrentAction != HumanReaction.Activity.None;
-                    Marker(human.transform.position + Vector3.up * (human.EyeHeight + 0.9f), "▲ " + (Household ? human.Label : "人間") + "・" + (h == 0 ? ResidentText() : StateText(human)), alarm ? Orange : Cream, false, view);
+                    Marker(human.transform.position + Vector3.up * (human.EyeHeight + 0.9f), "▲ " + (People ? human.Label : "人間") + "・" + (h == 0 ? ResidentText() : StateText(human)), alarm ? Orange : Cream, false, view);
                 }
                 var cage = Cage;
                 if (cage && cage.Count > 0) Marker(cage.transform.position + Vector3.up * 1.4f, "◇ 虫かご " + cage.Count + "匹", Lime, false, view);
@@ -640,8 +641,10 @@ namespace GokiTakeover
         // Stage 3 (町中華): the owner-cook's ladle swats like the slipper; the floors are joined by the stairs and a duct.
         private static readonly string[] DinerDangers =
         {
-            "店主のお玉  ―  橙の枠から逃げる。台・低い壁も届く", "粘着シート  ―  踏むと大きく減速", "毒餌  ―  青緑の粒。仲間の探索で見破る",
-            "殺虫スプレー  ―  パニック中。物陰に隠れる", "燻煙剤  ―  最終防衛。輪の外・高い所へ。巣も燻される"
+            "店主のお玉  ―  橙の枠から逃げる。台・低い壁も届く", "店主の熱湯  ―  橙の帯に流れる。帯から横へ",
+            "おかみさんのお盆  ―  横長の橙の四角。前後へ逃げる", "アルコールスプレー  ―  浴びると数秒遅くなる",
+            "バイトのデッキブラシ  ―  橙の四角ごと掃き飛ばす", "濡れた床（モップがけ）  ―  滑って止まれない",
+            "罠・毒餌・殺虫剤・燻煙剤  ―  店主が使う"
         };
         // Stage 2: the father keeps the Stage 1 tools; the mother and son bring their own.
         private static readonly string[] HouseDangers =
@@ -674,7 +677,7 @@ namespace GokiTakeover
             var right = new Rect(790, 48, 440, 560);
             Panel(right, Orange);
             GUI.Label(new Rect(816, 64, 300, 30), "危険", big);
-            var dangers = Household ? HouseDangers : Floors ? DinerDangers : Dangers;
+            var dangers = Floors ? DinerDangers : Household ? HouseDangers : Dangers;
             float step = dangers.Length > 6 ? 34 : dangers.Length > 5 ? 38 : 46;
             for (int i = 0; i < dangers.Length; i++)
             {
@@ -1061,8 +1064,14 @@ namespace GokiTakeover
             var vacuum = Vacuum; var net = Net;
             if (vacuum && (vacuum.Current == VacuumAttack.Phase.Aim || vacuum.Sucking)) return "母・掃除機！";
             if (net && (net.Current == BugNetAttack.Phase.Windup || net.PlayerCaught)) return "息子・虫取り網！";
+            foreach (var a in progress.Attacks)   // Stage 3: the staff's own attacks
+            {
+                if (a is HotWaterAttack hot && (hot.Aiming || hot.Hot)) return a.Human.Label + "・熱湯！";
+                if (a is AlcoholSprayAttack spray && (spray.Aiming || spray.Spraying)) return a.Human.Label + "・スプレー！";
+                if (a is DeckBrushAttack brush && brush.Busy && brush.Current != DeckBrushAttack.Phase.Recover) return a.Human.Label + "・デッキブラシ！";
+            }
             var w = Watcher;
-            if (w == session.Human) return Household ? "父・" + ResidentText() : ResidentText();
+            if (w == session.Human) return People ? w.Label + "・" + ResidentText() : ResidentText();
             return w.Label + "・" + StateText(w);
         }
         // The resident (the father in Stage 2) also places traps and sprays.
@@ -1077,10 +1086,14 @@ namespace GokiTakeover
         {
             var state = h.State;
             if (state == HumanAIController.HumanState.Routine) { string doing = LifeText(h); if (doing != null) return doing; }
+            if (state == HumanAIController.HumanState.Routine && h.TryGetComponent(out MopDuty mop) && mop.Mopping) return "モップがけ";
+            if (h.OnStairs) return "階段";
             return state == HumanAIController.HumanState.Routine ? "巡回中" : state == HumanAIController.HumanState.Chase ? "追跡中！" : state == HumanAIController.HumanState.Search ? "捜索中" : "攻撃予兆！";
         }
         // ---- Stage 2 household ----
-        private bool Household => session.Family.Count > 0;
+        // Stage 2: the family house (its own texts: the net, the cat, the father). People: more than one named human (Stage 2 and 3).
+        private bool Household => session.Family.Count > 0 && !Floors;
+        private bool People => session.Family.Count > 0;
         // Stage 3: the floors (null in Stage 1 and 2).
         private FloorLinks floors;
         private bool floorsLooked;
@@ -1151,8 +1164,36 @@ namespace GokiTakeover
                     : inFan ? "掃除機で狙われている！  扇から横へ逃げろ" : "母が掃除機を向けている…", 366, Orange);
                 return true;
             }
+            return Floors && StaffBanner();
+        }
+        // Stage 3: the staff's attacks on the player's spot, then the lasting effects (soaked, a wet floor).
+        private bool StaffBanner()
+        {
+            Vector3 foot = session.Motor.FootPoint;
+            foreach (var a in progress.Attacks)
+            {
+                if (a is HotWaterAttack hot && hot.OnStrip(foot))
+                {
+                    if (hot.Aiming) { Banner("熱湯が来る！  橙の帯から横へ逃げろ", 366, Orange); return true; }
+                    if (hot.Hot) { Banner("熱湯！  帯の外へ逃げろ", 366, Orange); return true; }
+                }
+                if (a is AlcoholSprayAttack spray && (spray.Aiming || spray.Spraying) && spray.InFan(foot))
+                { Banner(spray.Aiming ? "アルコールスプレー！  橙の扇から逃げろ" : "アルコールを浴びている！  扇の外へ", 366, Orange); return true; }
+                if (a is DeckBrushAttack brush && brush.WindingUp && brush.InBox(foot)) { Banner("デッキブラシが来る！  橙の四角から逃げろ", 366, Orange); return true; }
+            }
             return false;
         }
+        // The lasting effects, below every attack warning.
+        private bool StaffStatusBanner()
+        {
+            if (session.Slowed) { Banner("アルコールで動きが鈍っている（あと" + Mathf.CeilToInt(session.SlowRemaining) + "秒）", 366, Orange); return true; }
+            var wet = Wet;
+            if (wet && wet.PlayerOnWet) { Banner("濡れた床！  滑って止まれない", 366, Orange); return true; }
+            return false;
+        }
+        private WetFloor wetFloor;
+        private bool wetLooked;
+        private WetFloor Wet { get { if (!wetLooked) { wetLooked = true; wetFloor = FindFirstObjectByType<WetFloor>(); } return wetFloor; } }
         private readonly int[] counts = new int[System.Enum.GetValues(typeof(AllyRoach.AllyState)).Length];
         private string AllySummary()
         {

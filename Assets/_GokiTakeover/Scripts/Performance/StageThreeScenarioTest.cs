@@ -27,7 +27,7 @@ namespace GokiTakeover
         private ColonyManager colony;
         private StageProgress progress;
         private FloorLinks floors;
-        private HumanAIController chef;
+        private HumanAIController chef, okami, baito;
         private Camera view;
         private static readonly FieldInfo PatrolField = typeof(HumanAIController).GetField("patrolPoints", BindingFlags.NonPublic | BindingFlags.Instance);
 
@@ -114,7 +114,10 @@ namespace GokiTakeover
             progress.Begin();
             yield return null; yield return null;
             Check(progress.Current == StageProgress.Phase.Invasion && session.IsRunning && progress.ZoneCount == 10 && colony.Allies == stage.startAllies, "侵略開始: 縄張り10区域（2階建て）・仲間 " + stage.startAllies + "匹");
-            Check(session.HumanCount == 1 && chef.Label == "店主" && chef.Slaps && ReferenceEquals(chef.Floors, floors) && !chef.Agent.autoTraverseOffMeshLink, "人間は店主（お玉）・階段は自分で上り下りする");
+            okami = session.Family[0]; baito = session.Family[1];
+            Check(session.HumanCount == 3 && chef.Label == "店主" && chef.Slaps && chef.WeaponName == "お玉" && okami.Label == "おかみさん" && okami.Slaps && okami.WeaponName == "お盆" && okami.StrikeBox
+                && baito.Label == "バイト" && !baito.Slaps && ReferenceEquals(chef.Floors, floors) && ReferenceEquals(baito.Floors, floors) && !chef.Agent.autoTraverseOffMeshLink,
+                "人間は店主（お玉）・おかみさん（お盆）・バイト（叩かない）の3人、みな階段は自分で上り下りする");
             Check(floors.FloorOf(session.Player.position) == 1 && session.InSafeNest, "主人公は1Fの巣（洗い場のシンク下）から");
 
             FreezeChef();
@@ -245,29 +248,178 @@ namespace GokiTakeover
             Destroy(upstairs.gameObject);
             FreezeChef();
 
-            // ---- Final defence and the clear ----
+            yield return StaffChecks();
+
+            // ---- Final defence and the clear: the landlady and the part-timer leave ----
             colony.DebugGrant(0);
             for (int i = 0; i < progress.ZoneCount; i++) progress.DebugCapture(i);
             yield return WaitForReal(0.4f);
             progress.DebugAddFear(1000);
             PlaceExact(new Vector3(-2.0f, 0.02f, -0.5f));
             colony.Restore(colony.Food, stage.foodGoal, colony.NestLevel, colony.UpgradeLevels, colony.Allies, colony.UpgradesBought, colony.Born);
-            chef.enabled = true; chef.Agent.isStopped = false;
+            session.AddMaxHp(60);   // the smoke must not end the run while the staff walk out (it is not what is tested here)
+            foreach (var h in new[] { chef, okami, baito }) { h.enabled = true; h.Agent.isStopped = false; }
             yield return WaitFor(() => progress.Current == StageProgress.Phase.FinalDefence, 3);
             Check(progress.Current == StageProgress.Phase.FinalDefence, "3ゲージ満タンで最終防衛");
+            Check(okami.Suspended && baito.Suspended && progress.Attacks.All(a => !a.Allowed), "おかみさんとバイトは攻撃をやめて裏口から避難を始める");
+            okami.Agent.Warp(stage.exitPoint + Vector3.right * 0.4f); baito.Agent.Warp(stage.exitPoint + Vector3.right * 0.6f);
+            yield return WaitFor(() => progress.FamilyGone, 14);
+            Check(progress.FamilyGone && !session.HumanPresent(1) && !session.HumanPresent(2), "おかみさんとバイトは店から出ていく（残るのは店主）");
             progress.DebugFinishDefence();
             yield return WaitFor(() => progress.Current == StageProgress.Phase.Cleared, 25);
-            Check(progress.Current == StageProgress.Phase.Cleared && session.State == PhaseTwoSession.RunState.Cleared, "最終防衛を耐えると店主は裏口から出ていき、ステージクリア");
+            Check(progress.Current == StageProgress.Phase.Cleared && session.State == PhaseTwoSession.RunState.Cleared, "最終防衛を耐えると店主は裏口から出ていき、ステージクリア（" + progress.Current + "・" + session.State + "・生命力 " + session.Hp + "・店主 " + chef.transform.position.ToString("F1") + (chef.Suspended ? "・止まっている" : "") + (chef.OnStairs ? "・階段" : "") + "・残り " + (chef.Agent.isOnNavMesh ? chef.Agent.remainingDistance.ToString("F1") : "NavMesh外") + "）");
             var result = SaveData.Load();
             Check(result.Record("stage03") != null, "クリアの記録（ステージ3）");
             if (playerRun) yield return Capture("stage3-clear-720p.png");
             progress.RestartStage();
             yield return null; yield return null;
             Check(floors.FloorOf(session.Player.position) == 1 && session.InSafeNest && !floors.Travelling && floors.FloorOf(chef.transform.position) == 1, "リプレイで主人公は1Fの巣・店主は厨房に戻る");
+            Check(session.HumanPresent(1) && session.HumanPresent(2) && progress.Attacks.All(a => a.Allowed) && FindFirstObjectByType<WetFloor>().Count == 0 && !session.Slowed,
+                "リプレイでおかみさんとバイトも店に戻り、濡れた床は乾く");
         }
 
+        // Step 2: the staff's attacks, each started on the spot (DebugAim / DebugStrike) with everyone else frozen.
+        private IEnumerator StaffChecks()
+        {
+            FreezeChef();
+            var hot = chef.GetComponent<HotWaterAttack>();
+            var spray = okami.GetComponent<AlcoholSprayAttack>();
+            var brush = baito.GetComponent<DeckBrushAttack>();
+            var mop = baito.GetComponent<MopDuty>();
+            var wet = FindFirstObjectByType<WetFloor>();
+            Check(hot && spray && brush && mop && wet && progress.Attacks.Count == 3, "店主に熱湯・おかみさんにアルコールスプレー・バイトにデッキブラシとモップがけ（攻撃3つ）");
+            Vector3 space = new Vector3(6.5f, 0, -0.8f);   // open kitchen floor, clear of the sticky trap
+
+            // ---- The cook's hot water ----
+            PlaceHuman(chef, space + new Vector3(0, 0, 3.4f), 180);
+            Place(space);
+            var helper = commander.AddAlly();
+            helper.Spawn(space + new Vector3(0, 0, 1.2f), 0); helper.SetOrder(AllyRoach.Order.Defend, Vector3.zero);
+            hot.DebugAim(space);
+            yield return null;
+            Check(hot.Aiming && hot.OnStrip(motor.FootPoint) && chef.Suspended, "熱湯: 床に橙の帯で予告（店主はその場で片手鍋を傾ける）");
+            Vector3 escape;
+            Check(hot.Threatens(helper.Position, out escape) && !hot.OnStrip(escape), "帯の上の仲間は帯の横へ逃げる");
+            commander.enabled = false;   // allies hold still (the commander ticks them)
+            int hp = session.Hp;
+            if (playerRun) { yield return WaitForReal(HotWaterAttack.AimSeconds * 0.5f); yield return Shot(space + new Vector3(3.0f, 2.6f, -2.8f), space + new Vector3(-0.4f, 0.2f, 1.6f), "stage3-hotwater-aim-720p.png"); }
+            yield return WaitFor(() => hot.Hot, 3);
+            yield return WaitFor(() => hot.Current == HotWaterAttack.Phase.Pool, 2);
+            if (playerRun) yield return Shot(space + new Vector3(3.0f, 2.6f, -2.8f), space + new Vector3(-0.4f, 0.2f, 1.6f), "stage3-hotwater-flow-720p.png");
+            Check(hot.PlayerHits == 1 && session.Hp == hp - 1, "帯の上にいると熱湯でダメージ（" + hp + " → " + session.Hp + "）");
+            Check(hot.AllyHits == 1 && helper.Stunned, "帯の上の仲間は熱湯でひっくり返る");
+            commander.enabled = true;
+            yield return WaitFor(() => hot.Current == HotWaterAttack.Phase.Idle, 4);
+            Check(!chef.Suspended, "熱湯の後、店主は動き出す");
+            yield return WaitForReal(1.4f);   // past the invulnerability
+            hp = session.Hp;
+            hot.DebugAim(space);
+            Place(space + new Vector3(HotWaterAttack.Width * 0.5f + 0.9f, 0, 0));
+            yield return WaitFor(() => hot.Current == HotWaterAttack.Phase.Recover, 5);
+            Check(session.Hp == hp, "帯から横へ出ていれば熱湯は当たらない");
+            yield return WaitFor(() => hot.Current == HotWaterAttack.Phase.Idle, 3);
+
+            // ---- The landlady's tray: a wide box ----
+            PlaceHuman(okami, space + new Vector3(0, 0, 1.9f), 180);
+            Place(space);
+            yield return WaitForReal(1.4f);
+            okami.enabled = true; okami.Agent.isStopped = false;
+            hp = session.Hp;
+            okami.DebugStrike();
+            var warning = (Transform)typeof(HumanAIController).GetField("warning", BindingFlags.NonPublic | BindingFlags.Instance).GetValue(okami);
+            yield return null;
+            Vector3 aside = okami.AttackPoint + Vector3.Cross(Vector3.up, okami.StrikeForward) * 1.0f;
+            Check(okami.State == HumanAIController.HumanState.Attack && warning.GetComponent<RectTelegraph>() && warning.gameObject.activeSelf && warning.localScale.x > warning.localScale.z * 2
+                && okami.IsUnderSlipper(aside) && !chef.IsUnderSlipper(chef.transform.position + Vector3.right * 9), "お盆: 横長の橙の四角で予告（幅 " + warning.localScale.x.ToString("F1") + " × 奥行 " + warning.localScale.z.ToString("F1") + "、横1mも届く）");
+            if (playerRun) yield return Shot(space + new Vector3(3.0f, 2.6f, -2.6f), space + new Vector3(-0.4f, 0.2f, 0.8f), "stage3-tray-720p.png");
+            yield return WaitFor(() => okami.SlipperLanded, 3);
+            yield return null;
+            Check(session.Hp == hp - 1, "お盆の下にいるとダメージ");
+            FreezeChef();
+            yield return WaitForReal(1.4f);
+
+            // ---- The landlady's alcohol spray ----
+            PlaceHuman(okami, space + new Vector3(0, 0, 3.4f), 180);
+            Place(space);
+            helper.Spawn(space + new Vector3(0.4f, 0, 0.8f), 0); helper.SetOrder(AllyRoach.Order.Defend, Vector3.zero);
+            hp = session.Hp;
+            spray.DebugAim(space);
+            yield return null;
+            Check(spray.Aiming && spray.InFan(motor.FootPoint) && commander.Threatened(helper.Position, out escape) && !spray.InFan(escape), "アルコールスプレー: 床に橙の扇で予告・仲間は扇の外へ逃げる");
+            commander.enabled = false;   // allies hold still (the commander ticks them)
+            yield return WaitFor(() => spray.Spraying, 2);
+            yield return WaitForReal(0.3f);
+            if (playerRun) yield return Shot(space + new Vector3(3.2f, 2.4f, -2.4f), space + new Vector3(-0.3f, 0.6f, 1.6f), "stage3-spray-720p.png");
+            yield return null;
+            Check(session.Slowed && motor.SpeedMultiplier <= PhaseTwoSession.SlowFactor + 0.01f && session.Hp == hp, "スプレーを浴びると動きが半分に（ダメージはない）");
+            Check(Time.time < helper.SlowUntil, "浴びた仲間も遅くなる");
+            commander.enabled = true;
+            yield return WaitFor(() => !session.Slowed, AlcoholSprayAttack.SlowSeconds + 3);
+            yield return null;
+            Check(!session.Slowed && motor.SpeedMultiplier > 0.9f, AlcoholSprayAttack.SlowSeconds.ToString("F0") + "秒で元に戻る");
+            yield return WaitFor(() => spray.Current == AlcoholSprayAttack.Phase.Idle, 3);
+            PlaceHuman(okami, OkamiHome, 160);
+
+            // ---- The part-timer's deck brush ----
+            PlaceHuman(baito, space + new Vector3(0, 0, 1.6f), 180);
+            Place(space);
+            yield return WaitForReal(1.4f);
+            hp = session.Hp;
+            helper.Spawn(space + new Vector3(0.4f, 0, 0.2f), 0); helper.SetOrder(AllyRoach.Order.Defend, Vector3.zero);
+            Vector3 before = motor.FootPoint, helperBefore = helper.Position;
+            brush.DebugAim(space);
+            yield return null;
+            bool helperThreat = commander.Threatened(helper.Position, out escape);
+            Check(brush.WindingUp && brush.InBox(motor.FootPoint) && helperThreat && !brush.InBox(escape), "デッキブラシ: 橙の四角で予告・仲間は四角の外へ逃げる（予告 " + brush.WindingUp + "・主人公 " + brush.InBox(motor.FootPoint) + " " + motor.FootPoint.ToString("F1") + "・仲間 " + helperThreat + " " + helper.Position.ToString("F1") + "→" + escape.ToString("F1") + "）");
+            commander.enabled = false;   // allies hold still (the commander ticks them)
+            if (playerRun) { yield return WaitForReal(0.4f); yield return Shot(space + new Vector3(3.0f, 2.6f, -2.0f), space + new Vector3(-0.2f, 0.2f, 0.4f), "stage3-brush-720p.png"); }
+            yield return WaitFor(() => brush.Current == DeckBrushAttack.Phase.Recover, 3);
+            for (int i = 0; i < 3; i++) yield return null;
+            float pushed = Vector3.Dot(motor.FootPoint - before, brush.Direction);
+            Check(brush.PlayerHits == 1 && session.Hp == hp - 1 && pushed > 1.0f && motor.ExternalVelocity == Vector3.zero, "四角の中にいると掃き飛ばされてダメージ（" + pushed.ToString("F1") + "m）");
+            Check(brush.AllyHits == 1 && (helper.Stunned || !helper.Alive) && Vector3.Dot(helper.Position - helperBefore, brush.Direction) > 0.5f, "仲間も掃き飛ばされてひっくり返る");
+            commander.enabled = true;
+            yield return WaitFor(() => brush.Current == DeckBrushAttack.Phase.Idle, 2);
+            helper.gameObject.SetActive(false);
+
+            // ---- Mopping and the wet floor ----
+            PlaceExact(session.Nest.position + Vector3.up * 0.1f);   // nothing to chase
+            PlaceHuman(baito, BaitoHome, 200);
+            baito.enabled = true; baito.Agent.isStopped = false;
+            mop.Begin();
+            yield return WaitFor(() => wet.Count >= 3, 10);
+            Check(mop.Mopping && wet.Count >= 3, "バイトはモップがけで歩いた跡を濡らす（濡れた床 " + wet.Count + "か所）");
+            FreezeChef();
+            Vector3 floorSpot = new Vector3(6.4f, 0, -1.0f);
+            yield return Slide(floorSpot);
+            float dry = lastSlide;
+            wet.Drop(floorSpot + new Vector3(0, 0, 0.0f)); wet.Drop(floorSpot + new Vector3(0, 0, -1.4f)); wet.Drop(floorSpot + new Vector3(0, 0, -2.6f));
+            yield return Slide(floorSpot);
+            Check(lastSlide > dry + 0.4f && wet.Slides > 0, "濡れた床では止まれず滑る（手を離してから " + lastSlide.ToString("F2") + "m、乾いた床 " + dry.ToString("F2") + "m）");
+            if (playerRun) yield return Shot(floorSpot + new Vector3(2.6f, 2.0f, 1.8f), floorSpot + new Vector3(0, 0, -1.4f), "stage3-wetfloor-720p.png");
+            Place(new Vector3(3.0f, 0, -4.5f));
+            yield return null;
+            Check(motor.Traction == 1, "乾いた床に出れば元どおり");
+        }
+
+        // Walks forward for half a second on the spot, lets go and measures how far the roach goes on by itself.
+        private float lastSlide;
+        private IEnumerator Slide(Vector3 at)
+        {
+            PlaceFacing(at + new Vector3(0, 0.02f, 1.2f), 180);
+            yield return null;
+            float end = Time.realtimeSinceStartup + 0.6f;
+            while (Time.realtimeSinceStartup < end) { Walk(); yield return null; }
+            Vector3 released = motor.FootPoint;
+            end = Time.realtimeSinceStartup + 1.6f;
+            while (Time.realtimeSinceStartup < end) { motor.MovementEnabled = true; motor.SimulateMove(Vector2.zero, false, Time.deltaTime); yield return null; }
+            lastSlide = Flat(motor.FootPoint - released).magnitude;
+        }
+        private static readonly Vector3 OkamiHome = new Vector3(19.0f, 0, -1.6f), BaitoHome = new Vector3(2.5f, 0, 12.4f);
+        private void Place(Vector3 position) { position.y = 0.02f; PlaceExact(position); }
+
         private static readonly Vector3 StageThreeStart = new Vector3(3.6f, 0, 2.4f), ChefStartStop = new Vector3(3.5f, 0, 2.5f);
-        private void FreezeChef() { chef.enabled = false; if (chef.Agent.isOnNavMesh) chef.Agent.isStopped = true; }
+        private void FreezeChef() { foreach (var h in new[] { chef, okami, baito }) { if (!h) continue; h.enabled = false; if (h.Agent.isOnNavMesh) h.Agent.isStopped = true; } }
         private void PlaceHuman(HumanAIController h, Vector3 at, float yaw) { h.Agent.Warp(at); h.transform.rotation = Quaternion.Euler(0, yaw, 0); }
         private IEnumerator Shot(Vector3 eye, Vector3 target, string name)
         {

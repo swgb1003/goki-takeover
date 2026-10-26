@@ -46,6 +46,8 @@ namespace GokiTakeover
         public bool Stunned => State == AllyState.Stunned;
         public int Flips { get; private set; }
         public float CalledAt { get; set; } = -10;
+        // Stage 3: walks at half speed until then (the landlady's alcohol spray). 0: never slowed.
+        public float SlowUntil { get; set; }
         // Route order (Phase 5 tactics view): run the drawn line point by point at full speed, holding to it even
         // when threatened (a decoy), then do what its end asks (collect the food, take the zone, else hide nearby).
         public AllyRoute Route { get; private set; }
@@ -78,6 +80,7 @@ namespace GokiTakeover
             TargetFood = null; scoutPoint = -1; hasPath = false;
             IsDead = false;
             Wounded = false;
+            SlowUntil = 0;
             if (body) body.localRotation = Quaternion.identity;
             State = AllyState.Idle;
             SetOrder(Order.Follow, Vector3.zero);
@@ -280,6 +283,7 @@ namespace GokiTakeover
             Vector3 toward = path[Mathf.Min(pathIndex, path.Count - 1)] - flat;
             if (commander.Grid.IsSticky(flat)) speed *= commander.Session.Settings.stickySpeed;
             if (Carried) speed *= commander.Session.CarryingSpeed;
+            if (Time.time < SlowUntil) speed *= PhaseTwoSession.SlowFactor;   // Stage 3: sprayed with alcohol
             speed *= commander.AllySpeedScale;
             Vector3 desired = toward.sqrMagnitude > 1e-4f ? toward.normalized * speed : Vector3.zero;
             desired += commander.Separation(this) * speed;

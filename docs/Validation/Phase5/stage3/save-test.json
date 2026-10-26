@@ -8,7 +8,7 @@
             "stage": "stage03",
             "clears": 1,
             "bestRating": "B",
-            "bestSeconds": 98.31916046142578,
+            "bestSeconds": 126.63763427734375,
             "bestFood": 70
         }
     ],
@@ -19,7 +19,7 @@
     "checkpoint": {
         "valid": true,
         "stage": "stage03",
-        "savedAt": "2026/10/26 12:49",
+        "savedAt": "2026/10/26 13:59",
         "food": 0,
         "totalCollected": 0,
         "nestLevel": 1,
@@ -47,7 +47,7 @@
         ],
         "fear": 0.0,
         "fearGained": 0.0,
-        "seconds": 0.016715100035071374,
+        "seconds": 0.020859304815530778,
         "discoveries": 0,
         "successors": 0
     }

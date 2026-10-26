@@ -19,5 +19,47 @@
     "vertices": 1814,
     "triangles": 3480,
     "bones": 19
+  },
+  {
+    "actor": "Okami",
+    "lod": 0,
+    "vertices": 7179,
+    "triangles": 14290,
+    "bones": 19
+  },
+  {
+    "actor": "Okami",
+    "lod": 1,
+    "vertices": 3444,
+    "triangles": 6820,
+    "bones": 19
+  },
+  {
+    "actor": "Okami",
+    "lod": 2,
+    "vertices": 1446,
+    "triangles": 2824,
+    "bones": 19
+  },
+  {
+    "actor": "Baito",
+    "lod": 0,
+    "vertices": 7143,
+    "triangles": 14230,
+    "bones": 19
+  },
+  {
+    "actor": "Baito",
+    "lod": 1,
+    "vertices": 3428,
+    "triangles": 6800,
+    "bones": 19
+  },
+  {
+    "actor": "Baito",
+    "lod": 2,
+    "vertices": 1431,
+    "triangles": 2806,
+    "bones": 19
   }
 ]

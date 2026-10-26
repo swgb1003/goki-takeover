@@ -40,6 +40,11 @@ namespace GokiTakeover
         public Vector3 ExternalVelocity { get; set; }
         // Colony upgrade (Phase 4); stays 1 elsewhere.
         public float UpgradeSpeed { get; set; } = 1f;
+        // Stage 3: grip on the floor. Below 1 (a freshly mopped floor) the walk speeds up and slows down gradually:
+        // the roach slides on when the keys are let go. 1 (every earlier scene): the walk follows the keys at once.
+        public float Traction { get; set; } = 1f;
+        private Vector3 slide;
+        public Vector3 SlideVelocity => slide;
         public bool ClimbEnabled => surfaceAlign;
         public bool IsClimbing => climbing;
         public Vector3 SurfaceUp => surfaceUp;
@@ -101,7 +106,10 @@ namespace GokiTakeover
             if (controller.isGrounded && verticalVelocity < 0) verticalVelocity = -2f;
             verticalVelocity = Mathf.Max(verticalVelocity - gravity * deltaTime, -20f);
             Vector3 previous = transform.position;
-            controller.Move((direction * (IsRunning ? runSpeed : walkSpeed) * Mathf.Clamp(SpeedMultiplier * UpgradeSpeed, 0, 2) + ExternalVelocity + Vector3.up * verticalVelocity) * deltaTime + PusherOffset());
+            Vector3 walk = direction * (IsRunning ? runSpeed : walkSpeed) * Mathf.Clamp(SpeedMultiplier * UpgradeSpeed, 0, 2);
+            if (Traction < 1) { slide = Vector3.MoveTowards(slide, walk, (1.2f + 10f * Traction) * deltaTime); walk = slide; }
+            else slide = walk;
+            controller.Move((walk + ExternalVelocity + Vector3.up * verticalVelocity) * deltaTime + PusherOffset());
             KeepInPlayableSpace();
             CurrentSpeed = Vector3.ProjectOnPlane(transform.position - previous, Vector3.up).magnitude / deltaTime;
             if (visual) visual.SetMotion(Mathf.Clamp01(CurrentSpeed / (IsRunning ? runSpeed : walkSpeed)), IsRunning);
@@ -154,6 +162,7 @@ namespace GokiTakeover
         {
             climbing = hasSafeClimb = false;
             pushTime = 0;
+            slide = Vector3.zero;
             surfaceUp = viewUp = Vector3.up;
             if (controller) controller.enabled = true;
             if (surfaceAlign) surfaceAlign.localRotation = Quaternion.identity;

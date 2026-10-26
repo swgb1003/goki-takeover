@@ -7,6 +7,10 @@ Chef (店主): a stocky older cook. White cook's cap (和帽子), white double-b
 and long sleeves rolled to the forearm, a navy waist apron (前掛け) to the knees, charcoal trousers, white kitchen
 clogs, a grey moustache. A steel ladle (お玉) in the right hand where the others hold the slipper, and a small
 saucepan (片手鍋) of hot water in the left hand, held like the exterminator's lance (its spout is nozzleTip).
+Okami (おかみさん, step 2): a white kappogi smock over a navy skirt, a dotted pink headscarf (三角巾), tabi and geta,
+a round red lacquered tray (お盆) in the right hand where the others hold the slipper, an alcohol spray bottle in the left.
+Baito (バイト, step 2): navy cap, red T-shirt with the shop panel, black waist apron, jeans, black rubber boots, a mop
+in the right hand and a deck brush (デッキブラシ) in the left, held like the lance.
 Only the actors built here are written. No third-party assets.
 """
 import bpy, math, json, sys
@@ -29,7 +33,7 @@ TROUSERS = (.10, .10, .11, .10); CLOG = (.90, .90, .88, .45); CLOG_SOLE = (.10, 
 STEEL = (.66, .67, .68, .82); STEEL_DARK = (.36, .37, .38, .75); HANDLE_BLACK = (.05, .05, .05, .40)
 
 # ---------------------------------------------------------------- shared helpers (as the family's)
-def skin_tone(base, blush_amount, lips):
+def skin_tone(base, blush_amount, lips, brow=(.26, .25, .24), brow_t=.012):
     def f(p, n):
         r, g, b, a = base
         blush = math.exp(-((p.x ** 2 - .0098) ** 2) / .0003 - ((p.y - 3.76) / .05) ** 2) * blush_amount
@@ -39,9 +43,9 @@ def skin_tone(base, blush_amount, lips):
         if p.z > .15 and abs(p.x) < .05 and 3.648 < p.y < 3.69: r, g, b, a = lerp(r, lips[0], .7), lerp(g, lips[1], .7), lerp(b, lips[2], .7), lips[3]
         if 3.664 < p.y < 3.672 and abs(p.x) < .038 and p.z > .17: r, g, b = r * .55, g * .45, b * .45
         if abs(abs(p.x) - .026) < .012 and 3.733 < p.y < 3.745 and p.z > .19 and n.y < -.2: r, g, b = r * .35, g * .3, b * .3
-        for x in (-1, 1):   # thick grey brows
+        for x in (-1, 1):   # brows (the cook: thick and grey)
             u = (p.x - x * .072) / .055; arch = 3.872 + .008 * (1 - u * u)
-            if abs(u) < 1 and abs(p.y - arch) < .012 * (1 - .4 * abs(u)) and p.z > .1: r, g, b, a = .26, .25, .24, .25
+            if abs(u) < 1 and abs(p.y - arch) < brow_t * (1 - .4 * abs(u)) and p.z > .1: r, g, b, a = brow[0], brow[1], brow[2], .25
         return (r, g, b, a)
     return f
 
@@ -258,6 +262,219 @@ def chef_parts():
     parts.append((fuse(to_object('Pot_Water', water), .006, 1), (160, 80, 30), lambda p, n: (.55, .62, .66, .95), hand_l, .3))
     return parts, tip
 
+# ---------------------------------------------------------------- landlady (おかみさん)
+OKAMI_SKIN = (.58, .40, .31, .36); OKAMI_LIP = (.55, .20, .22, .50); OKAMI_HAIR = (.06, .04, .03, .30)
+KAPPOGI = (.90, .90, .87, .10); KAPPOGI_SHADE = (.80, .80, .77, .10); SCARF = (.72, .30, .36, .12); SCARF_DOT = (.92, .88, .80, .12)
+SKIRT = (.10, .12, .20, .10); TABI = (.88, .87, .84, .10); GETA_SOLE = (.40, .28, .18, .30); GETA_STRAP = (.55, .10, .10, .30)
+TRAY = (.42, .06, .05, .70); TRAY_RIM = (.08, .05, .04, .70); BOTTLE = (.86, .92, .95, .60); BOTTLE_HEAD = (.12, .45, .78, .50)
+
+def scarf_shape():
+    """三角巾: a cloth cap over the head, knotted at the nape with the corner hanging down."""
+    s = Shape()
+    s.ellipsoid(V(0, 3.97, -.05), V(.215, .165, .232), R.rot_xyz(x=-10), 36, 22)
+    s.sweep([V(0, 3.82, -.01), V(0, 3.90, -.02)], [.205, .21], [.222, .228], V(0, 0, 1), 2.4, 40)   # band over the brow
+    s.ellipsoid(V(0, 3.80, -.25), V(.07, .05, .05), None, 16, 10)                                    # knot
+    s.sweep([V(0, 3.86, -.24), V(0, 3.72, -.27), V(0, 3.62, -.25)], [.11, .07, .02], [.02, .02, .015], V(0, 0, -1), 2.4, 16)   # corner
+    return s
+
+def scarf_color(p, n):
+    dot = (math.sin(p.x * 90) * math.sin(p.y * 90 + p.z * 40)) > .86
+    return SCARF_DOT if dot else (SCARF[0] * (1 + .04 * noise.noise(p * 30)), SCARF[1], SCARF[2], SCARF[3])
+
+def kappogi_shape():
+    """割烹着: a white smock with a round neck, full to the knees, gathered sleeves to the wrists."""
+    s = Shape()
+    rings = [(1.18, .46, .33, .01), (1.40, .45, .32, .01), (1.70, .44, .31, .01), (1.98, .43, .30, .01), (2.30, .41, .29, .015),
+             (2.60, .41, .29, .02), (2.90, .415, .29, .025), (3.05, .415, .28, .02), (3.18, .418, .256, .005), (3.28, .405, .222, -.01),
+             (3.36, .31, .178, -.02), (3.43, .18, .152, -.035)]
+    s.sweep([V(0, y, cz) for y, _, _, cz in rings], [w for _, w, _, _ in rings], [d for _, _, d, _ in rings], V(0, 0, 1), 2.6, 40)
+    for x in (-1, 1):
+        sh = P('Arm_R'); sh = V(x * sh.x, sh.y, sh.z)
+        s.ellipsoid(sh + V(0, -.03, 0), V(.125, .10, .128))
+    collar = [V(math.sin(a) * .17, 3.43, -.035 + math.cos(a) * .156) for a in [i * math.tau / 30 for i in range(31)]]
+    s.chain(collar, [.022] * 31, 10)
+    s.sweep([V(-.26, 2.06, .315), V(.26, 2.06, .315)], [.16, .16], [.012, .012], V(0, 0, 1), 4, 16)   # pocket
+    return s
+
+def kappogi_color(p, n):
+    c = KAPPOGI if .5 + .5 * noise.noise(V(p.x * 5, p.y * 12, p.z * 5)) > .35 else KAPPOGI_SHADE
+    if abs(p.y - 1.19) < .03: c = KAPPOGI_SHADE
+    return R.fabric(c, p, .04, 50)
+
+def skirt_shape():
+    s = Shape()
+    s.sweep([V(0, 1.30, 0), V(0, .95, .005), V(0, .62, .01), V(0, .40, .01)], [.42, .40, .37, .35], [.29, .28, .27, .26], V(0, 0, 1), 2.4, 36)
+    return s
+
+def tabi_geta(x):
+    s = Shape(); cx = x * .222; sx = 1 if x > 0 else -1
+    s.capsule(V(cx, .44, -.03), V(cx, .16, -.035), .07, .068, 18)                       # ankle in a tabi sock
+    s.ellipsoid(V(cx, .11, -.09), V(.07, .07, .085))
+    s.sweep([V(cx, .11, -.08), V(cx + sx * .008, .10, .10), V(cx + sx * .016, .085, .26)], [.075, .085, .08], [.06, .052, .04], V(0, 1, 0), 2.4, 20)
+    return s
+
+def geta(x):
+    s = Shape(); cx = x * .222
+    s.sweep([V(cx, .03, -.22), V(cx, .03, .34)], [.115, .11], [.03, .03], V(0, 1, 0), 4.0, 20)   # wooden sole
+    for z in (-.12, .2): s.sweep([V(cx - .09, -.005, z), V(cx + .09, -.005, z)], [.02, .02], [.035, .035], V(0, 0, 1), 4.0, 10)   # teeth
+    s.chain([V(cx - .07, .06, .02), V(cx, .12, .2), V(cx + .07, .06, .02)], [.014] * 3, 8)          # thong
+    return s
+
+def tray_parts():
+    """お盆 in the right fist (the Weapon bone): a round lacquered tray gripped at its rim, its face out of the palm (-X)."""
+    g = R.GRIP; c = g + V(-.05, -.30, 0)
+    tray = Shape(); tray.sweep([c + V(.012, 0, 0), c + V(-.012, 0, 0)], [.34, .34], [.34, .34], V(0, 1, 0), 2.0, 40)
+    rim = Shape()
+    ring = [c + V(-.016, math.cos(a) * .34, math.sin(a) * .34) for a in [i * math.tau / 40 for i in range(41)]]
+    rim.chain(ring, [.016] * 41, 8)
+    return tray, rim
+
+def bottle_parts():
+    """The alcohol spray bottle in the left hand, held like the lance: the trigger head and nozzle beyond the fist."""
+    w, d, p, t = tool_frame()
+    body = Shape(); body.capsule(w - d * .2, w + d * .16, .1, .1, 20)
+    neck = Shape(); neck.capsule(w + d * .16, w + d * .26, .045, .045, 12)
+    head = Shape(); head.capsule(w + d * .26, w + d * .38, .06, .055, 14); head.capsule(w + d * .3 - p * .03, w + d * .3 - p * .12, .02, .02, 8)
+    return body, neck, head, w + d * .42
+
+def okami_parts():
+    parts = []
+    head = R.head_object()
+    face = skin_tone(OKAMI_SKIN, .14, OKAMI_LIP, (.10, .07, .05), .007)
+    def scalp(p, n):
+        if p.y > 3.74 and (p.z < -.02 or abs(p.x) > .15):
+            k = 1 + .25 * noise.noise(V(p.x * 70, p.y * 30, p.z * 70))
+            return (OKAMI_HAIR[0] * k, OKAMI_HAIR[1] * k, OKAMI_HAIR[2] * k, OKAMI_HAIR[3])
+        return face(p, n)
+    parts.append((head, (2700, 1250, 520), scalp, R.head_weights, 1.0))
+    parts.append((fuse(to_object('Okami_Scarf', scarf_shape()), .008, 2, lambda p, n: .004 * noise.noise(p * 14)), (950, 440, 180), scarf_color, R.const('Head'), .8))
+    for x in (-R.EYE_C.x, R.EYE_C.x):
+        parts.append((to_object('Okami_Eye', R.eye_shape(x)), (260, 110, 40), lambda p, n, x=x: R.eye_color(p, n, x), R.const('Head'), .9))
+    parts.append((fuse(to_object('Okami_Kappogi', kappogi_shape()), .0105, 3, cloth_folds), (2600, 1300, 560), kappogi_color, coat_weights, 1.0))
+    parts.append((fuse(to_object('Okami_Skirt', skirt_shape()), .011, 3, cloth_folds), (1200, 600, 260), lambda p, n: R.fabric(SKIRT, p, .06, 40), lower_body_weights, 1.0))
+    for x in (-1, 1):
+        sl = fuse(to_object('Okami_Sleeve', sleeve_shape(x, .9, [.15, .142, .132, .126, .12, .112, .09], 0)), .0095, 2, cloth_folds)
+        parts.append((sl, (900, 430, 180), kappogi_color, R.arm_weights, 1.0))
+        hs, tips = R.hand_shape(x > 0)
+        parts.append((fuse(to_object('Okami_Hand', hs), .0056, 2), (700, 330, 130), skin_tone(OKAMI_SKIN, 0, OKAMI_LIP), R.hand_weights(x > 0), 1.0))
+        side = 'L' if x < 0 else 'R'
+        foot_w = lambda p, side=side: R.W(('Shin_' + side, smooth(.22, .38, p.y)), ('Foot_' + side, 1 - smooth(.22, .38, p.y)))
+        parts.append((fuse(to_object('Okami_Tabi', tabi_geta(x)), .0075, 2), (420, 200, 80), lambda p, n: TABI, foot_w, 1.0))
+        parts.append((fuse(to_object('Okami_Geta', geta(x)), .006, 1), (360, 170, 70), lambda p, n: GETA_STRAP if p.y > .055 else GETA_SOLE, R.const('Foot_' + side), .8))
+    tray, rim = tray_parts()
+    weapon = R.const('Weapon')
+    parts.append((fuse(to_object('Tray', tray), .006, 1), (520, 250, 100), lambda p, n: TRAY, weapon, .5))
+    parts.append((fuse(to_object('TrayRim', rim), .005, 1), (300, 140, 60), lambda p, n: TRAY_RIM, weapon, .4))
+    body, neck, bhead, tip = bottle_parts()
+    hand_l = R.const('Hand_L')
+    parts.append((fuse(to_object('Bottle', body), .006, 1), (420, 200, 80), lambda p, n: BOTTLE, hand_l, .5))
+    parts.append((fuse(to_object('BottleNeck', neck), .005, 1), (120, 60, 24), lambda p, n: BOTTLE_HEAD, hand_l, .4))
+    parts.append((fuse(to_object('BottleHead', bhead), .005, 1), (200, 100, 40), lambda p, n: BOTTLE_HEAD, hand_l, .4))
+    return parts, tip
+
+# ---------------------------------------------------------------- part-timer (バイト)
+BAITO_SKIN = (.60, .42, .32, .34); BAITO_LIP = (.52, .26, .24, .45); BAITO_HAIR = (.05, .035, .025, .30)
+CAP_NAVY = (.06, .08, .20, .16); CAP_LOGO = (.88, .70, .10, .2); TEE_RED = (.62, .10, .08, .10); TEE_WHITE = (.90, .88, .84, .10)
+JEANS = (.12, .16, .26, .12); BOOT = (.04, .04, .045, .45); APRON_BLACK = (.05, .05, .06, .12)
+MOP_STICK = (.75, .75, .72, .55); MOP_HEAD = (.86, .84, .78, .08); BRUSH_POLE = (.12, .45, .30, .50); BRUSH_HEAD = (.92, .66, .08, .40); BRISTLE = (.20, .16, .12, .10)
+
+def baseball_cap():
+    s = Shape()
+    s.ellipsoid(V(0, 3.955, -.035), V(.205, .15, .218), R.rot_xyz(x=-8), 36, 20)
+    s.ellipsoid(V(0, 3.89, .22), V(.17, .016, .14), R.rot_xyz(x=-6), 32, 10)   # brim
+    return s
+
+def tee_shape():
+    s = Shape()
+    rings = [(1.98, .40, .262, 0), (2.30, .385, .258, .005), (2.50, .375, .262, .012), (2.70, .385, .27, .02), (2.90, .395, .278, .025),
+             (3.05, .40, .27, .02), (3.18, .405, .245, .005), (3.28, .395, .21, -.01), (3.36, .30, .17, -.02), (3.43, .17, .145, -.035)]
+    s.sweep([V(0, y, cz) for y, _, _, cz in rings], [w for _, w, _, _ in rings], [d for _, _, d, _ in rings], V(0, 0, 1), 2.6, 40)
+    for x in (-1, 1):
+        sh = P('Arm_R'); sh = V(x * sh.x, sh.y, sh.z); el = P('Forearm_R'); el = V(x * el.x, el.y, el.z)
+        dd = (el - sh).normalized()
+        s.ellipsoid(sh + V(x * .025, -.01, 0), V(.135, .105, .13))
+        s.sweep([sh + dd * .02, sh + dd * .17, sh + dd * .32], [.145, .145, .14], [.145, .143, .138], V(0, 0, 1), 2.2, 28)
+    collar = [V(math.sin(a) * .158, 3.43 + .012 * math.cos(a), -.04 + math.cos(a) * .15) for a in [i * math.tau / 28 for i in range(29)]]
+    s.chain(collar, [.018] * 29, 10)
+    return s
+
+def tee_color(p, n):
+    if p.y > 3.41: return TEE_WHITE
+    if p.z > .2 and abs(p.y - 2.95) < .09 and abs(p.x) < .2: return TEE_WHITE   # the shop's logo panel on the chest
+    return R.fabric(TEE_RED, p, .05, 40)
+
+def waist_apron():
+    def hw(y): return .44
+    def zf(x, y): return (.30 if y > 1.9 else lerp(.30, .27, smooth(1.9, 1.5, y))) - .7 * x * x
+    s = curved_panel(2.12, 1.45, hw, zf, .016)
+    s.sweep([V(-.44, 2.1, .2), V(-.42, 2.1, -.2), V(0, 2.1, -.29), V(.42, 2.1, -.2), V(.44, 2.1, .2)], [.025] * 5, [.007] * 5, V(0, 1, 0), 4, 10)
+    return s
+
+def boot(x):
+    s = Shape(); cx = x * .222; sx = 1 if x > 0 else -1
+    s.sweep([V(cx, 1.0, -.02), V(cx, .7, -.03), V(cx, .4, -.04), V(cx, .2, -.05)], [.17, .16, .15, .13], [.17, .16, .15, .13], V(0, 0, 1), 2.0, 24)   # shaft over the jeans
+    s.ellipsoid(V(cx, .13, -.09), V(.11, .11, .12))
+    s.sweep([V(cx, .13, -.12), V(cx + sx * .008, .12, .1), V(cx + sx * .018, .1, .27), V(cx + sx * .02, .085, .37)], [.115, .12, .12, .105], [.1, .09, .07, .05], V(0, 1, 0), 2.6, 22)
+    s.sweep([V(cx, .025, -.21), V(cx, .025, .39)], [.12, .115], [.028, .028], V(0, 1, 0), 4.0, 20)
+    return s
+
+def mop_parts():
+    """The mop in the right fist (the Weapon bone, where the others hold a slipper): stick down past the knee, strands at the end."""
+    g = R.GRIP
+    stick = Shape(); stick.capsule(g + V(-.02, .5, 0), g + V(-.02, -1.25, 0), .022, .022, 12)
+    head = Shape()
+    for i in range(14):
+        a = i * math.tau / 14
+        top = g + V(-.02, -1.25, 0)
+        s0 = top + V(math.cos(a) * .05, 0, math.sin(a) * .05)
+        s1 = top + V(math.cos(a) * .17, -.28, math.sin(a) * .17)
+        head.chain([s0, (s0 + s1) / 2 + V(0, -.04, 0), s1], [.022, .02, .018], 8)
+    return stick, head
+
+def brush_parts():
+    """The deck brush in the left hand, held like the lance: a long green pole, a yellow head across its end, bristles."""
+    w, d, p, t = tool_frame()
+    pole = Shape(); pole.capsule(w - d * .1, w + d * 1.45, .025, .025, 12)
+    hc = w + d * 1.52
+    head = Shape(); head.sweep([hc - t * .26, hc + t * .26], [.06, .06], [.05, .05], d, 4.0, 16)
+    bristles = Shape(); bristles.sweep([hc + d * .07 - t * .25, hc + d * .07 + t * .25], [.05, .05], [.045, .045], d, 4.0, 16)
+    return pole, head, bristles, hc + d * .12
+
+def baito_parts():
+    parts = []
+    head = R.head_object()
+    face = skin_tone(BAITO_SKIN, .06, BAITO_LIP, (.05, .04, .03), .011)
+    def scalp(p, n):
+        if p.y > 3.74 and (p.z < -.02 or abs(p.x) > .15):
+            k = 1 + .25 * noise.noise(V(p.x * 70, p.y * 30, p.z * 70))
+            return (BAITO_HAIR[0] * k, BAITO_HAIR[1] * k, BAITO_HAIR[2] * k, BAITO_HAIR[3])
+        return face(p, n)
+    parts.append((head, (2700, 1250, 520), scalp, R.head_weights, 1.0))
+    parts.append((fuse(to_object('Baito_Cap', baseball_cap()), .007, 2), (900, 420, 170),
+                  lambda p, n: CAP_LOGO if p.z > .17 and p.y > 3.95 and abs(p.x) < .06 else CAP_NAVY, R.const('Head'), .9))
+    for x in (-R.EYE_C.x, R.EYE_C.x):
+        parts.append((to_object('Baito_Eye', R.eye_shape(x)), (260, 110, 40), lambda p, n, x=x: R.eye_color(p, n, x), R.const('Head'), .9))
+    parts.append((fuse(to_object('Baito_Tee', tee_shape()), .0105, 3, cloth_folds), (2150, 1100, 480), tee_color, R.shirt_weights, 1.0))
+    parts.append((fuse(to_object('Baito_Apron', waist_apron()), .0085, 2, lambda p, n: .003 * noise.noise(p * 14)), (1100, 520, 220),
+                  lambda p, n: R.fabric(APRON_BLACK, p, .06, 40), apron_weights, .9))
+    parts.append((fuse(to_object('Baito_Jeans', R.pants_shape()), .0115, 3, R.pants_detail), (1500, 760, 330), lambda p, n: R.fabric(JEANS, p, .1, 60), R.pants_weights, 1.0))
+    for x in (-1, 1):
+        hs, tips = R.hand_shape(x > 0); limb = R.arm_shape(x); limb.add(hs.v, hs.f)
+        parts.append((fuse(to_object('Baito_ArmHand', limb), .0056, 2), (1120, 540, 210), skin_tone(BAITO_SKIN, 0, BAITO_LIP), R.arm_hand_weights(x > 0), 1.0))
+        side = 'L' if x < 0 else 'R'
+        boot_w = lambda p, side=side: R.W(('Shin_' + side, smooth(.24, .40, p.y)), ('Foot_' + side, 1 - smooth(.24, .40, p.y))) if p.y < .9 else R.W(('Shin_' + side, 1.0))
+        parts.append((fuse(to_object('Baito_Boot', boot(x)), .0075, 2), (700, 330, 130), lambda p, n: BOOT, boot_w, 1.0))
+    stick, mop = mop_parts()
+    weapon = R.const('Weapon')
+    parts.append((fuse(to_object('MopStick', stick), .005, 1), (200, 90, 40), lambda p, n: MOP_STICK, weapon, .5))
+    parts.append((fuse(to_object('MopHead', mop), .006, 1), (700, 320, 130), lambda p, n: (MOP_HEAD[0] * (1 + .1 * noise.noise(p * 40)), MOP_HEAD[1], MOP_HEAD[2], MOP_HEAD[3]), weapon, .6))
+    pole, bhead, bristles, tip = brush_parts()
+    hand_l = R.const('Hand_L')
+    parts.append((fuse(to_object('BrushPole', pole), .005, 1), (220, 100, 40), lambda p, n: BRUSH_POLE, hand_l, .5))
+    parts.append((fuse(to_object('BrushHead', bhead), .006, 1), (300, 140, 60), lambda p, n: BRUSH_HEAD, hand_l, .5))
+    parts.append((fuse(to_object('Bristles', bristles), .006, 1), (300, 140, 60), lambda p, n: BRISTLE, hand_l, .5))
+    return parts, tip
+
 # ---------------------------------------------------------------- build (same as the family's)
 def build(actor, parts, material):
     ids = {b[0]: i for i, b in enumerate(R.BONES)}
@@ -297,7 +514,7 @@ vc = nodes.new('ShaderNodeVertexColor'); vc.layer_name = 'Surface'; links.new(vc
 inv = nodes.new('ShaderNodeMath'); inv.operation = 'SUBTRACT'; inv.inputs[0].default_value = 1
 links.new(vc.outputs['Alpha'], inv.inputs[1]); links.new(inv.outputs[0], bsdf.inputs['Roughness'])
 
-MAKERS = {'Chef': chef_parts}
+MAKERS = {'Chef': chef_parts, 'Okami': okami_parts, 'Baito': baito_parts}
 only = None
 if '--only' in sys.argv: only = sys.argv[sys.argv.index('--only') + 1].split(',')
 all_reports = []; all_lods = {}

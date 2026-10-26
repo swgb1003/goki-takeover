@@ -912,12 +912,11 @@ namespace GokiTakeover
             // A slap on the worktop or high on a wall does not reach the floor (Phase 5 reach); a floor strike always passes.
             Vector3 strikeUp = human.StrikeUp;
             if (Mathf.Abs(Vector3.Dot(position - human.AttackPoint, strikeUp)) > HumanAIController.StrikeDepth) return false;
-            var s = session.Settings;
             if (strikeUp.y < 0.7f)
             {
                 // Low on a wall: step straight away from it.
                 if (!human.IsUnderSlipper(position)) return false;
-                Vector3 candidate = position + Flat(strikeUp).normalized * (s.slipperHalfLength + s.crushMargin + 0.8f);
+                Vector3 candidate = position + Flat(strikeUp).normalized * (human.StrikeHalfAlong + 0.8f);
                 candidate.y = 0;
                 if (!grid.Walkable(candidate)) grid.NearestWalkable(candidate, 2f, out candidate);
                 escape = candidate;
@@ -925,9 +924,9 @@ namespace GokiTakeover
             }
             Vector3 forward = human.StrikeForward, right = Vector3.Cross(Vector3.up, forward);
             Vector3 offset = Flat(position - human.AttackPoint);
-            float a = s.slipperHalfLength + s.crushMargin + 0.45f, b = s.slipperHalfWidth + s.crushMargin + 0.45f;
+            float a = human.StrikeHalfAlong + 0.45f, b = human.StrikeHalfAcross + 0.45f;
             float along = Vector3.Dot(offset, forward) / a, across = Vector3.Dot(offset, right) / b;
-            if (along * along + across * across > 1) return false;
+            if (human.StrikeBox ? Mathf.Abs(along) > 1 || Mathf.Abs(across) > 1 : along * along + across * across > 1) return false;
             Vector3 away = Mathf.Abs(Vector3.Dot(offset, right)) > 0.05f ? right * Mathf.Sign(Vector3.Dot(offset, right)) : right;
             for (int i = 0; i < 2; i++)
             {
@@ -998,6 +997,23 @@ namespace GokiTakeover
                 }
                 return worst == 2 ? "高" : worst == 1 ? "中" : "低";
             }
+        }
+
+        /// <summary>
+        /// Stage 3: an ally struck by something other than a slipper (hot water, the deck brush): the same spare life
+        /// as under a slipper (the first hit flips it). True when it died. Covered allies are never struck.
+        /// </summary>
+        public bool StrikeAlly(AllyRoach ally)
+        {
+            if (!ally.Active || Covered(ally.Position)) return false;
+            if (!ally.Hit(AllyStunSeconds, AllyWoundHealSeconds, settings.allyRespawnSeconds))
+            {
+                AllyFlips++;
+                if (Time.unscaledTime >= flipNoticeAt) { flipNoticeAt = Time.unscaledTime + 1.5f; Say("仲間がひっくり返った！  もう一度やられるとおしまい ― F で呼んで助けよう"); }
+                return false;
+            }
+            AllyLosses++;
+            return true;
         }
 
         // ---- Stage 2 household attacks ----

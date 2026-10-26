@@ -211,6 +211,9 @@ namespace GokiTakeover.Editor
             EditorUtility.SetDirty(chef);
             SetPatrol(chef, ChefStops);
 
+            // ---- The staff (step 2): the landlady and the part-timer, everyone's own attacks ----
+            BuildStaff(stageRoot, session, commander, chef);
+
             // ---- Nest smoking (final defence) ----
             var pLink = new SerializedObject(progress);
             var nestFogger = (SmokeFogger)pLink.FindProperty("nestFogger").objectReferenceValue;
@@ -241,12 +244,20 @@ namespace GokiTakeover.Editor
         }
 
         // ---------------- Definition ----------------
-        public const string Description = "油と餃子の匂いがする2階建ての町中華。階段とダクトで2階へ。店主のお玉に注意。";
+        public const string Description = "店主・おかみさん・バイトが働く2階建ての町中華。熱湯・お盆・ブラシに注意。";
+        public const string Subtitle = "2階建ての中華料理店";
         /// <summary>Stage 3 numbers, harder than Stage 2 on every gauge. Written once (while it was still a placeholder).</summary>
         public static void FillDefinition(StageDefinition stage)
         {
-            if (stage.playable && stage.zones.Length > 0) return;   // set up already: keep any tuning
-            stage.id = "stage03"; stage.title = "町中華"; stage.subtitle = "2階建ての中華料理店（店主）"; stage.difficulty = 4; stage.residents = 1;
+            if (stage.playable && stage.zones.Length > 0)
+            {
+                // Set up already: keep any tuning. Once, when the staff came (step 2): the people and the write-up.
+                if (stage.residents >= 3) return;
+                stage.residents = 3; stage.subtitle = Subtitle; stage.description = Description;
+                EditorUtility.SetDirty(stage);
+                return;
+            }
+            stage.id = "stage03"; stage.title = "町中華"; stage.subtitle = Subtitle; stage.difficulty = 4; stage.residents = 3;
             stage.description = Description;
             stage.playable = true; stage.sceneName = Path.GetFileNameWithoutExtension(ScenePath);
             stage.unlocks = ""; stage.unlocksTitle = ""; stage.reward = ""; stage.rewardTitle = "";
@@ -384,7 +395,7 @@ namespace GokiTakeover.Editor
             EditorUtility.SetDirty(animator);
         }
         /// <summary>The cook's patrol stops, snapped onto the NavMesh.</summary>
-        private static void SetPatrol(HumanAIController human, Vector3[] stops)
+        private static void SetPatrol(HumanAIController human, Vector3[] stops, string prefix = "PatrolPoint_")
         {
             var navigation = (NavMeshData)new SerializedObject(UnityEngine.Object.FindFirstObjectByType<KitchenNavigation>()).FindProperty("data").objectReferenceValue;
             var instance = NavMesh.AddNavMeshData(navigation);
@@ -398,7 +409,7 @@ namespace GokiTakeover.Editor
                 for (int i = 0; i < stops.Length; i++)
                 {
                     if (!NavMesh.SamplePosition(stops[i], out var hit, 1.2f, NavMesh.AllAreas)) throw new InvalidOperationException("巡回地点が人間の通り道にありません: " + stops[i]);
-                    result[i] = i < old.Count ? old[i] : GeneratedAssets.Empty("PatrolPoint_" + i, parent, Vector3.zero);
+                    result[i] = i < old.Count ? old[i] : GeneratedAssets.Empty(prefix + i, parent, Vector3.zero);
                     result[i].position = hit.position;
                 }
                 for (int i = stops.Length; i < old.Count; i++) UnityEngine.Object.DestroyImmediate(old[i].gameObject);

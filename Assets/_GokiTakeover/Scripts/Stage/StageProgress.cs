@@ -141,9 +141,9 @@ namespace GokiTakeover
             {
                 member.SearchWander = true; member.PatrolRandom = true;
                 if (stage.residentHuntsAllies) member.ExtraPrey = commander;
-                var attack = member.GetComponent<HouseholdAttack>();
-                if (attack) attacks.Add(attack);
+                attacks.AddRange(member.GetComponents<HouseholdAttack>());
             }
+            attacks.AddRange(human.GetComponents<HouseholdAttack>());   // Stage 3: the cook's hot water (none before)
             reaction.StageDetectionScale = stage.humanDetectionScale;
             reaction.StageSpeedScale = stage.humanSpeedScale;
             reaction.HeatArea = stage.heatArea;

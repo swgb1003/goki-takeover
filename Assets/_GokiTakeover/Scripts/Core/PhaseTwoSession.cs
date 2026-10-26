@@ -128,7 +128,7 @@ namespace GokiTakeover
             RunSeconds += Time.deltaTime;
             IsSticky = false;
             foreach (var trap in traps) IsSticky |= trap.Contains(Player.position);
-            motor.SpeedMultiplier = (interactor.Carried ? CarryingSpeed : 1) * (IsSticky ? settings.stickySpeed : 1);
+            motor.SpeedMultiplier = (interactor.Carried ? CarryingSpeed : 1) * (IsSticky ? settings.stickySpeed : 1) * (Time.time < slowUntil ? SlowFactor : 1);
             motor.MovementEnabled = CanControl && !Restrained;
             if (!ExternalCursor && Input.GetMouseButtonDown(0) && Application.isFocused) SetCursor(true);
         }
@@ -165,6 +165,7 @@ namespace GokiTakeover
             motor.ResetSafePosition();
             Hp = MaximumHp;
             Restrained = false;
+            slowUntil = 0;
             invulnerableUntil = Time.time + settings.invulnerabilitySeconds * 2;
             IsSticky = false;
             visual.ResetReaction();
@@ -172,6 +173,13 @@ namespace GokiTakeover
             SetState(RunState.Playing);
             followCamera.ResetView();
         }
+        // Stage 3: the landlady's alcohol spray makes the player sluggish for a while (never slowed in earlier scenes).
+        public const float SlowFactor = 0.5f;
+        private float slowUntil;
+        public bool Slowed => Time.time < slowUntil;
+        public float SlowRemaining => Mathf.Max(0, slowUntil - Time.time);
+        public void SlowDown(float seconds) { slowUntil = Mathf.Max(slowUntil, Time.time + seconds); }
+        public void ClearSlow() { slowUntil = 0; }
         /// <summary>Stage 3: the player steps through to the other floor (stairs, duct). It lands on the floor there, facing yaw.</summary>
         public void TeleportPlayer(Vector3 position, float yaw)
         {
@@ -204,6 +212,7 @@ namespace GokiTakeover
             RunSeconds = 0;
             invulnerableUntil = Time.time + settings.invulnerabilitySeconds;
             IsSticky = false;
+            slowUntil = 0;
             motor.SpeedMultiplier = 1;
             visual.ResetReaction();
             visual.SetMotion(0, false);

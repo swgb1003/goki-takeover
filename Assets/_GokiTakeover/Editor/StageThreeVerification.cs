@@ -34,8 +34,22 @@ namespace GokiTakeover.Editor
             var humans = Object.FindObjectsByType<HumanAIController>(FindObjectsSortMode.None);
             var chef = session.Human;
             var mesh = chef.GetComponentsInChildren<SkinnedMeshRenderer>(true).Select(r => r.sharedMesh).FirstOrDefault(m => m && m.name.EndsWith("_Detail0"));
-            Check(humans.Length == 1 && session.Family.Count == 0 && chef.Label == "店主" && chef.Slaps && mesh && mesh.name == "Chef_Detail0" && mesh.bindposes.Length == 19 && mesh.vertexCount > 3000,
-                "人間は店主1人（新しいBlenderモデル・住人と同じ19本の骨・お玉で叩く）");
+            Check(humans.Length == 3 && session.Family.Count == 2 && chef.Label == "店主" && chef.Slaps && chef.WeaponName == "お玉" && mesh && mesh.name == "Chef_Detail0" && mesh.bindposes.Length == 19 && mesh.vertexCount > 3000,
+                "店主（新しいBlenderモデル・住人と同じ19本の骨・お玉で叩く）");
+            var okami = session.Family[0]; var baito = session.Family[1];
+            System.Func<HumanAIController, Mesh> lod0 = h => h.GetComponentsInChildren<SkinnedMeshRenderer>(true).Select(r => r.sharedMesh).FirstOrDefault(m => m && m.name.EndsWith("_Detail0"));
+            Check(okami.Label == "おかみさん" && lod0(okami).name == "Okami_Detail0" && baito.Label == "バイト" && lod0(baito).name == "Baito_Detail0"
+                && lod0(okami).bindposes.Length == 19 && lod0(baito).vertexCount > 3000, "おかみさんとバイト（新しいBlenderモデル・同じ19本の骨）");
+            Check(okami.Slaps && okami.WeaponName == "お盆" && okami.StrikeBox && okami.StrikeHalfAcross > okami.StrikeHalfAlong * 2 && !baito.Slaps,
+                "おかみさんはお盆で横長の四角を叩く・バイトは叩かない");
+            Check(chef.GetComponent<HotWaterAttack>() && okami.GetComponent<AlcoholSprayAttack>() && baito.GetComponent<DeckBrushAttack>() && baito.GetComponent<MopDuty>() && Object.FindFirstObjectByType<WetFloor>()
+                && Object.FindFirstObjectByType<WetFloor>().Capacity == StageThreeGenerator.WetPatches, "熱湯（店主）・アルコールスプレー（おかみさん）・デッキブラシとモップがけ（バイト）・濡れた床 " + StageThreeGenerator.WetPatches + "か所分");
+            var warnings = humans.Select(h => new SerializedObject(h).FindProperty("warning").objectReferenceValue as Transform).ToArray();
+            Check(warnings.Distinct().Count() == 3 && warnings[0] && ((Transform)new SerializedObject(okami).FindProperty("warning").objectReferenceValue).GetComponent<RectTelegraph>(),
+                "叩く予告は1人に1つ（おかみさんは四角）");
+            Check(humans.All(h => new SerializedObject(h.GetComponentInChildren<BlenderHumanAnimator>()).FindProperty("nozzleLocal").vector3Value.magnitude > 0.3f), "片手鍋・スプレー・デッキブラシの先は左手の先（狙える）");
+            var rects = Object.FindObjectsByType<RectTelegraph>(FindObjectsInactive.Include, FindObjectsSortMode.None);
+            Check(rects.Length == 3 && rects.All(r => !r.gameObject.activeSelf && r.GetComponentsInChildren<Collider>(true).Length == 0), "四角の予告3つ（お盆・熱湯・デッキブラシ、待機・当たり判定なし）");
             Check(!chef.GetComponentInChildren<ExterminatorLook>(true) && new SerializedObject(chef.GetComponentInChildren<BlenderHumanAnimator>()).FindProperty("nozzleLocal").vector3Value.magnitude > 0.5f,
                 "店主はステージ1の業者の姿に変わらない・左手の片手鍋の先（狙える）");
 
@@ -108,6 +122,12 @@ namespace GokiTakeover.Editor
                 var route = (Transform[])typeof(HumanAIController).GetField("patrolPoints", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance).GetValue(chef);
                 Check(route.Length >= 12 && route.All(t => Reach(chef.transform.position, t.position)) && route.Count(t => floors.FloorOf(t.position) == 2) >= 3 && route.Any(t => t.position.z > 8)
                     && route.Any(t => t.position.x > 12 && t.position.x < 30), "店主の巡回 " + route.Length + "か所（厨房・客席・洗い場・食品庫・2F、すべて歩ける）");
+                foreach (var member in session.Family)
+                {
+                    var stops = (Transform[])typeof(HumanAIController).GetField("patrolPoints", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance).GetValue(member);
+                    Check(stops.Length >= 8 && stops.All(t => Reach(member.transform.position, t.position)) && stops.Any(t => floors.FloorOf(t.position) == 2) && stops.Intersect(route).Count() == 0
+                        && Reach(member.transform.position, stage.exitPoint), member.Label + "の巡回 " + stops.Length + "か所（2Fも・すべて歩ける・自分の巡回地点）、裏口へ避難できる");
+                }
             }
             finally { foreach (var l in links) NavMesh.RemoveLink(l); instance.Remove(); }
         }

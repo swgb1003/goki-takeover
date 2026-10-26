@@ -165,14 +165,16 @@ namespace GokiTakeover
             Footsteps();
         }
 
-        // Stage 2: the vacuum's warning and suction, the net's warning, swing and catch. Phases packed 2 bits per attack.
+        // Stage 2: the vacuum's warning and suction, the net's warning, swing and catch. Stage 3: the cook's hot water,
+        // the landlady's spray, the part-timer's deck brush. Phases packed 3 bits per attack.
         private int AttackPhases()
         {
             int packed = 0, shift = 0;
             foreach (var a in progress.Attacks)
             {
-                int phase = a is VacuumAttack v ? (int)v.Current : a is BugNetAttack n ? (int)n.Current : 0;
-                packed |= phase << shift; shift += 2;
+                int phase = a is VacuumAttack v ? (int)v.Current : a is BugNetAttack n ? (int)n.Current : a is HotWaterAttack w ? (int)w.Current
+                    : a is AlcoholSprayAttack s ? (int)s.Current : a is DeckBrushAttack b ? (int)b.Current : 0;
+                packed |= phase << shift; shift += 3;
             }
             return packed;
         }
@@ -181,7 +183,7 @@ namespace GokiTakeover
             int now = AttackPhases(), shift = 0;
             foreach (var a in progress.Attacks)
             {
-                int before = (attackPhases >> shift) & 3, after = (now >> shift) & 3; shift += 2;
+                int before = (attackPhases >> shift) & 7, after = (now >> shift) & 7; shift += 3;
                 if (before == after) continue;
                 if (a is VacuumAttack)
                 {
@@ -192,6 +194,21 @@ namespace GokiTakeover
                 {
                     if (after == (int)BugNetAttack.Phase.Windup) Play(Sfx.Warning, 0.8f);
                     else if (before == (int)BugNetAttack.Phase.Windup) { Play(Sfx.Whoosh, 0.9f); if (net.PlayerCaught) Play(Sfx.SlipperHit, 0.7f); }
+                }
+                else if (a is HotWaterAttack)
+                {
+                    if (after == (int)HotWaterAttack.Phase.Aim) Play(Sfx.Warning, 0.8f);
+                    else if (after == (int)HotWaterAttack.Phase.Flow) Play(Sfx.Sizzle, 1f);
+                }
+                else if (a is AlcoholSprayAttack)
+                {
+                    if (after == (int)AlcoholSprayAttack.Phase.Aim) Play(Sfx.Warning, 0.8f);
+                    else if (after == (int)AlcoholSprayAttack.Phase.Spray) Play(Sfx.Spray, 0.9f);
+                }
+                else if (a is DeckBrushAttack)
+                {
+                    if (after == (int)DeckBrushAttack.Phase.Windup) Play(Sfx.Warning, 0.8f);
+                    else if (after == (int)DeckBrushAttack.Phase.Sweep) Play(Sfx.Whoosh, 1f);
                 }
             }
         }

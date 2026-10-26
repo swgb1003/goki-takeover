@@ -52,6 +52,17 @@ namespace GokiTakeover
         public bool Slaps => slaps;
         public float EyeHeight => eyeHeight;
         public void ConfigureMember(string name, bool slipper, float eyes, float speed) { label = name; slaps = slipper; eyeHeight = eyes; speedFactor = speed; }
+        // Stage 3: what the hand swats with (the cook's ladle, the landlady's tray) and its footprint; the tray strikes
+        // a wide rectangle instead of the slipper's oval. Empty / zero: the slipper of the settings (every earlier scene).
+        [SerializeField] private string weaponName = "";
+        [SerializeField] private float strikeHalfWidth, strikeHalfLength;
+        [SerializeField] private bool strikeBox;
+        public string WeaponName => string.IsNullOrEmpty(weaponName) ? "スリッパ" : weaponName;
+        public void ConfigureWeapon(string name, float halfWidth, float halfLength, bool box) { weaponName = name; strikeHalfWidth = halfWidth; strikeHalfLength = halfLength; strikeBox = box; }
+        /// <summary>Half the struck area across and along the swing, the crush margin included.</summary>
+        public float StrikeHalfAcross => (strikeHalfWidth > 0 ? strikeHalfWidth : Settings.slipperHalfWidth) + Settings.crushMargin;
+        public float StrikeHalfAlong => (strikeHalfLength > 0 ? strikeHalfLength : Settings.slipperHalfLength) + Settings.crushMargin;
+        public bool StrikeBox => strikeBox;
         private NavMeshAgent agent;
         private Vector3 spawn, lastSeen, attackPoint;
         private Quaternion spawnRotation, slipperRest;
@@ -283,8 +294,7 @@ namespace GokiTakeover
             }
             StrikeSurfaceHeight = SurfaceLift + (session.PlayerStrikeable && IsUnderSlipper(session.PlayerStrikePoint) ? CrushedRoachHeight : 0);
             warning.SetPositionAndRotation(attackPoint, Quaternion.LookRotation(StrikeAlong, StrikeUp));
-            warning.localScale = new Vector3((Settings.slipperHalfWidth + Settings.crushMargin) * 2, 0.015f,
-                (Settings.slipperHalfLength + Settings.crushMargin) * 2);
+            warning.localScale = new Vector3(StrikeHalfAcross * 2, 0.015f, StrikeHalfAlong * 2);
         }
         public bool IsUnderSlipper(Vector3 position)
         {
@@ -292,9 +302,9 @@ namespace GokiTakeover
             if (session.StrikeReach > 0 && Mathf.Abs(Vector3.Dot(offset, StrikeUp)) > StrikeDepth) return false;
             offset = Vector3.ProjectOnPlane(offset, StrikeUp);
             Vector3 toe = StrikeAlong;
-            float along = Vector3.Dot(offset, toe) / (Settings.slipperHalfLength + Settings.crushMargin);
-            float across = Vector3.Dot(offset, Vector3.Cross(StrikeUp, toe)) / (Settings.slipperHalfWidth + Settings.crushMargin);
-            return along * along + across * across <= 1;
+            float along = Vector3.Dot(offset, toe) / StrikeHalfAlong;
+            float across = Vector3.Dot(offset, Vector3.Cross(StrikeUp, toe)) / StrikeHalfAcross;
+            return strikeBox ? Mathf.Abs(along) <= 1 && Mathf.Abs(across) <= 1 : along * along + across * across <= 1;
         }
         // Height of a flat struck face above the resident's feet (the worktop); 0 on the floor and for walls.
         private float SurfaceLift => session.StrikeReach > 0 && StrikeUp.y > 0.99f ? Mathf.Max(0, attackPoint.y - 0.025f - transform.position.y) : 0;
@@ -373,6 +383,8 @@ namespace GokiTakeover
 #if UNITY_EDITOR || DEVELOPMENT_BUILD
         // Verification only: lose sight of a target at a point and start searching.
         public void DebugSearch(Vector3 lastSighting) { State = HumanState.Search; lastSeen = lastSighting; lostTime = 0.6f; wandering = false; Detection = 0.5f; }
+        // Verification: swing at the player now (the Tick lands it, so the component must be enabled).
+        public void DebugStrike() { Prey = -1; CanSeePlayer = CanSeeTarget = true; Detection = 1; BeginAttack(); }
 #endif
         public void ResetHuman()
         {
