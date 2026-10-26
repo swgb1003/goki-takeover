@@ -93,7 +93,23 @@ namespace GokiTakeover
                 save.unlocked = new[] { "stage01", "stage02", "stage03" }; save.guideDone = true;
                 save.Save();
                 menu.Reload();
-                if (playerRun) yield return Capture("title-720p.png");
+                // The paper title (案2b): the red-pen loop follows the focus, a press plays out before the page changes.
+                menu.Focus = 0;
+                yield return WaitForReal(0.4f);
+                if (playerRun) { yield return Capture("title-720p.png"); yield return CleanShot("clean-title-720p.png"); }
+                menu.Press(1);
+                Check(menu.Current == TitleMenu.Page.Title && !menu.Pressing, "タイトル: 記録がない時の「つづきから」は押しても進まない（首を振る）");
+                menu.Focus = 2;
+                yield return WaitForReal(0.4f);
+                if (playerRun) yield return Capture("title-focus-720p.png");
+                menu.Press(2);
+                Check(menu.Pressing && menu.Current == TitleMenu.Page.Title, "タイトル: 押した直後は押す動きを見せてから進む（" + menu.Current + "）");
+                yield return WaitForReal(0.07f);
+                if (playerRun) yield return Capture("title-press-720p.png");
+                yield return WaitFor(() => menu.Current == TitleMenu.Page.Settings, 2);
+                Check(menu.Current == TitleMenu.Page.Settings && !menu.Pressing, "タイトル: 押す動きのあとで「設定」が開く（" + menu.Current + "）");
+                menu.Back();
+                menu.Focus = 0;
                 menu.Open(TitleMenu.Page.StageSelect);
                 menu.Select(2);
                 Check(menu.IsOpen(menu.SelectedStage) && menu.SelectedStage.id == "stage03" && menu.SelectedStage.title == "町中華", "ステージ選択: ステージ2クリア後は「町中華」に出撃できる");
@@ -145,7 +161,7 @@ namespace GokiTakeover
                 PlaceHuman(chef, StageThreeStart, 200);
                 // Food on the floor by the fryer.
                 PlaceExact(new Vector3(1.4f, 0.02f, 2.2f));
-                yield return Shot(new Vector3(1.6f, 0.9f, 1.4f), new Vector3(0.4f, 0.1f, 3.9f), "stage3-food-720p.png");
+                yield return Shot(new Vector3(1.6f, 0.9f, 1.4f), new Vector3(0.4f, 0.1f, 3.9f), "stage3-food-720p.png", "clean-food-720p.png");
             }
 
             // ---- The diner food ----
@@ -178,7 +194,7 @@ namespace GokiTakeover
             Check(floors.FloorOf(motor.transform.position) == 2 && floors.Trips == trips + 1 && floors.FloorName(motor.transform.position) == "2F" && motor.transform.position.y < 0.5f,
                 "階段を歩いて登ると暗転して2Fの宴会座敷へ（" + motor.transform.position.ToString("F1") + "）");
             yield return null;
-            if (playerRun) { cameraRig.ResetView(); yield return Capture("stage3-2f-arrive-720p.png"); }
+            if (playerRun) { cameraRig.ResetView(); yield return Capture("stage3-2f-arrive-720p.png"); yield return CleanShot("clean-2f-720p.png"); }
             Check(floors.Hint(motor.transform.position) == "階段を下りると 1F へ", "2Fの階段の降り口で「階段を下りると 1F へ」");
 
             // ---- Down again ----
@@ -308,7 +324,7 @@ namespace GokiTakeover
             Check(hot.Threatens(helper.Position, out escape) && !hot.OnStrip(escape), "帯の上の仲間は帯の横へ逃げる");
             commander.enabled = false;   // allies hold still (the commander ticks them)
             int hp = session.Hp;
-            if (playerRun) { yield return WaitForReal(HotWaterAttack.AimSeconds * 0.5f); yield return Shot(space + new Vector3(3.0f, 2.6f, -2.8f), space + new Vector3(-0.4f, 0.2f, 1.6f), "stage3-hotwater-aim-720p.png"); }
+            if (playerRun) { yield return WaitForReal(HotWaterAttack.AimSeconds * 0.5f); yield return Shot(space + new Vector3(3.0f, 2.6f, -2.8f), space + new Vector3(-0.4f, 0.2f, 1.6f), "stage3-hotwater-aim-720p.png", "clean-hotwater-720p.png"); }
             yield return WaitFor(() => hot.Hot, 3);
             yield return WaitFor(() => hot.Current == HotWaterAttack.Phase.Pool, 2);
             if (playerRun) yield return Shot(space + new Vector3(3.0f, 2.6f, -2.8f), space + new Vector3(-0.4f, 0.2f, 1.6f), "stage3-hotwater-flow-720p.png");
@@ -512,11 +528,12 @@ namespace GokiTakeover
         private static readonly Vector3 StageThreeStart = new Vector3(3.6f, 0, 2.4f), ChefStartStop = new Vector3(3.5f, 0, 2.5f);
         private void FreezeChef() { foreach (var h in new[] { chef, okami, baito }) { if (!h) continue; h.enabled = false; if (h.Agent.isOnNavMesh) h.Agent.isStopped = true; } }
         private void PlaceHuman(HumanAIController h, Vector3 at, float yaw) { h.Agent.Warp(at); h.transform.rotation = Quaternion.Euler(0, yaw, 0); }
-        private IEnumerator Shot(Vector3 eye, Vector3 target, string name)
+        private IEnumerator Shot(Vector3 eye, Vector3 target, string name, string clean = null)
         {
             cameraRig.enabled = false;
             view.transform.SetPositionAndRotation(eye, Quaternion.LookRotation(target - eye));
             yield return Capture(name);
+            if (clean != null) yield return CleanShot(clean);
             cameraRig.enabled = true;
         }
         // Forward as the player would walk (the session re-derives MovementEnabled from the cursor lock every frame).
@@ -547,6 +564,18 @@ namespace GokiTakeover
             while (!condition() && Time.realtimeSinceStartup < end) yield return null;
         }
         private IEnumerator WaitForReal(float seconds) { yield return new WaitForSecondsRealtime(seconds); }
+        // The same frame without any IMGUI (reference backgrounds for UI mock-ups). Only with -goki-clean-shots:
+        // switching the HUDs off for a frame shifts the run's timing, so the normal run leaves it out.
+        private IEnumerator CleanShot(string name)
+        {
+            if (Array.IndexOf(Environment.GetCommandLineArgs(), "-goki-clean-shots") < 0) yield break;
+            var flags = System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.NonPublic;
+            var hidden = new List<MonoBehaviour>();
+            foreach (var b in FindObjectsByType<MonoBehaviour>(FindObjectsSortMode.None))
+                if (b.enabled && b != this && !(b is FloorLinks) && b.GetType().GetMethod("OnGUI", flags) != null) { b.enabled = false; hidden.Add(b); }
+            yield return Capture(name);
+            foreach (var b in hidden) if (b) b.enabled = true;
+        }
         private IEnumerator Capture(string name)
         {
             yield return new WaitForEndOfFrame();
@@ -554,7 +583,7 @@ namespace GokiTakeover
             yield return new WaitForSecondsRealtime(0.5f);
         }
         private void Check(bool value, string description)
-        { if (!value) throw new InvalidOperationException(description); checks.Add("PASS: " + description); Debug.Log("[STAGE3 PLAY] PASS: " + description); }
+        { if (!value) throw new InvalidOperationException(description + " [focused=" + Application.isFocused + " cursor=" + Cursor.lockState + " fps=" + (1 / Mathf.Max(1e-4f, Time.unscaledDeltaTime)).ToString("F0") + "]"); checks.Add("PASS: " + description); Debug.Log("[STAGE3 PLAY] PASS: " + description); }
         private static Vector3 Flat(Vector3 v) { v.y = 0; return v; }
         private void Finish(bool passed)
         {

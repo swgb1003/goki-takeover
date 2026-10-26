@@ -12,6 +12,7 @@
 - Phase 2〜4 のシーン・アセットは変更しない。共通スクリプトの変更は「既定値なら従来どおり」に限る。
 - 調整値は StageDefinition / *Settings アセットに置く。生成コードは初回だけ値を書き、2回目以降は調整を上書きしない。
 - UIは今のデザインを維持する（DesignReferencesに寄せない）。新しい画面・部品は HudKit / PhaseFiveHud の既存部品と色で作る。
+  例外: ユーザーの指示で、UI/UX改善案キャンバス（https://claude.ai/artifact/HP9Wfc1mUSofxBCrmMQEwK の案2b）へ画面ごとに作り替える。済んだのはタイトル画面だけ（PaperKit: 紙テープ・段ボール・シール・赤ペン、画面全体の色味）。ほかの画面は指示があるまで今のまま。
 - ビルドは Build/GokiTakeover に上書きする。新しいフォルダを作らない。
 
 ## 2. 新しい要素を足す時のチェックリスト（漏れやすい）

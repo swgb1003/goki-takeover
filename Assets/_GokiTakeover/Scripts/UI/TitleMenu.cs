@@ -14,7 +14,7 @@ namespace GokiTakeover
         [SerializeField] private PolishedPresentation presentation;
         [SerializeField] private CodexViewer codexViewer;
         private Font font;
-        private GUIStyle logo, logoSub, title, big, text, small, tiny, centred, centredBig, centredTitle;
+        private GUIStyle logo, subtitle, startStyle, startSub, tapeStyle, tapeLeft, quitStyle, keyStyle, title, big, text, small, tiny, centred, centredBig, centredTitle;
         private float scale = 1, offsetX, offsetY, messageUntil;
         private int focus, codexTab, warmups;
         private Page back = Page.Title;
@@ -28,7 +28,7 @@ namespace GokiTakeover
         public StageDefinition SelectedStage => stages[Selected];
         public int StageCount => stages.Length;
         public bool CanContinue => Save.HasCheckpoint(null) && StageFor(Save.checkpoint.stage) != null;
-        private static readonly string[] MainItems = { "▶  ゲーム開始", "つづきから", "設定", "図鑑", "終了" };
+        private static readonly string[] MainItems = { "はじめる", "つづきから", "設定", "図鑑", "終了" };
 
         public void Configure(StageDefinition[] list, PolishedPresentation look) { stages = list; presentation = look; }
         public void ConfigureCodex(CodexViewer viewer) { codexViewer = viewer; }
@@ -76,7 +76,7 @@ namespace GokiTakeover
         }
         public bool Continue()
         {
-            if (!CanContinue) { Say("記録がありません — 「ゲーム開始」から出撃しよう"); return false; }
+            if (!CanContinue) { Say("記録がありません — 「はじめる」から出撃しよう"); return false; }
             Selected = System.Array.IndexOf(stages, StageFor(Save.checkpoint.stage));
             return Sortie(true);
         }
@@ -111,11 +111,16 @@ namespace GokiTakeover
             if (Input.GetKeyDown(KeyCode.Escape) && Current != Page.Title) Back();
             if (Current == Page.Codex) CodexModelPage.Keys(CodexModelPage.ForTab(codexTab), codexViewer);
             int items = Current == Page.Title ? MainItems.Length : 0;
-            if (Current == Page.Title)
+            if (pending >= 0)
+            {
+                // The press animation plays out before the page changes.
+                if (Time.unscaledTime >= pendingAt) { int item = pending; pending = -1; if (Current == Page.Title) Activate(item); }
+            }
+            else if (Current == Page.Title)
             {
                 if (Input.GetKeyDown(KeyCode.DownArrow) || Input.GetKeyDown(KeyCode.S)) { focus = (focus + 1) % items; GameAudio.Ui(GameAudio.Sfx.Focus); }
                 if (Input.GetKeyDown(KeyCode.UpArrow) || Input.GetKeyDown(KeyCode.W)) { focus = (focus + items - 1) % items; GameAudio.Ui(GameAudio.Sfx.Focus); }
-                if (Input.GetKeyDown(KeyCode.Return) || Input.GetKeyDown(KeyCode.KeypadEnter)) { GameAudio.Ui(); Activate(focus); }
+                if (Input.GetKeyDown(KeyCode.Return) || Input.GetKeyDown(KeyCode.KeypadEnter)) Press(focus);
             }
             else if (Current == Page.StageSelect)
             {
@@ -142,10 +147,17 @@ namespace GokiTakeover
             if (stages == null || stages.Length == 0) return;
             if (title == null)
             {
-                logo = new GUIStyle(Style(88, FontStyle.Bold)) { alignment = TextAnchor.UpperCenter }; logoSub = new GUIStyle(Style(40, FontStyle.Bold)) { alignment = TextAnchor.UpperCenter }; title = Style(28); big = Style(22); text = Style(18); small = Style(14); tiny = Style(12);
+                logo = new GUIStyle(Style(88, FontStyle.Bold)) { alignment = TextAnchor.UpperCenter }; title = Style(28); big = Style(22); text = Style(18); small = Style(14); tiny = Style(12);
                 centred = new GUIStyle(text) { alignment = TextAnchor.MiddleCenter };
                 centredBig = new GUIStyle(big) { alignment = TextAnchor.MiddleCenter };
                 centredTitle = new GUIStyle(title) { alignment = TextAnchor.MiddleCenter };
+                subtitle = new GUIStyle(Style(28, FontStyle.Bold)) { alignment = TextAnchor.MiddleCenter };
+                startStyle = new GUIStyle(Style(40, FontStyle.Bold)) { alignment = TextAnchor.MiddleCenter };
+                startSub = new GUIStyle(Style(14, FontStyle.Bold)) { alignment = TextAnchor.UpperCenter };
+                tapeStyle = new GUIStyle(Style(18, FontStyle.Bold)) { alignment = TextAnchor.MiddleCenter };
+                tapeLeft = new GUIStyle(tapeStyle) { alignment = TextAnchor.MiddleLeft };
+                quitStyle = new GUIStyle(Style(14, FontStyle.Bold)) { alignment = TextAnchor.MiddleCenter };
+                keyStyle = Style(12, FontStyle.Bold);
             }
             Matrix4x4 saved = GUI.matrix;
             scale = Mathf.Min(Screen.width / 1280f, Screen.height / 720f);
@@ -155,8 +167,17 @@ namespace GokiTakeover
             if (Time.unscaledTime < messageUntil)
             {
                 float w = Mathf.Min(900, 60 + message.Length * 19);
-                HudKit.Panel(new Rect(640 - w / 2, 22, w, 40), HudKit.Orange);
-                GUI.Label(new Rect(640 - w / 2 + 18, 29, w - 30, 30), message, text);
+                if (Current == Page.Title)
+                {
+                    // On the paper title screen the notice is the HUD's orange gum tape.
+                    PaperKit.TornTape(new Rect(640 - w / 2, 300, w, 46), -1.2f, PaperKit.Orange);
+                    PaperKit.Rotated(new Rect(640 - w / 2, 300, w, 46), -1.2f, () => HudKit.Ink(centred, PaperKit.Hex(0x1C1005), () => GUI.Label(new Rect(640 - w / 2, 300, w, 46), message, centred)));
+                }
+                else
+                {
+                    HudKit.Panel(new Rect(640 - w / 2, 22, w, 40), HudKit.Orange);
+                    GUI.Label(new Rect(640 - w / 2 + 18, 29, w - 30, 30), message, text);
+                }
             }
             // First repaints: draw every page off-screen once so opening a page later does not hitch.
             if (warmups < 2 && Event.current.type == EventType.Repaint)
@@ -182,28 +203,163 @@ namespace GokiTakeover
         }
         private static void Dim() => HudKit.Fill(new Rect(0, 0, 1280, 720), new Color(0, 0, 0, 0.5f));
 
+        // The title screen as 「人間の落とし物」 (canvas 案2b, 2026-10-26): the menu is paper tape and a round sticker on a
+        // cardboard scrap at the right edge, the focus is a red-pen loop with a small cockroach, and one grade
+        // (warm tint, vignette, grain) lies over the scene and the UI alike so the paper does not float.
+        private static readonly Rect[] TitleItems =
+        {
+            new Rect(1006, 290, 186, 186), new Rect(984, 502, 244, 40), new Rect(980, 552, 150, 40), new Rect(1080, 600, 150, 40), new Rect(1000, 652, 112, 36),
+        };
+        private static readonly float[] TitleTilt = { -7, 1.5f, -2, 1, -1 };
+        private Vector2 lastMouse = new Vector2(-1, -1);
+        private const float LoopMove = 0.18f, PressTime = 0.32f, PressDelay = 0.26f, ShakeTime = 0.32f;
+        private Rect loopFrom, loopShown, roachShown;
+        private int loopTarget = -1, pending = -1, pressItem = -1;
+        private float loopSince, pendingAt, pressSince = -9, shakeSince = -9;
+
+        /// <summary>
+        /// Press an item: the paper is pushed flat and springs back, the red pen circles it a second time and the
+        /// cockroach hops at it; the action runs when that is over. A disabled item shakes its head instead.
+        /// </summary>
+        public bool Pressing => pending >= 0;
+        public int Focus { get => focus; set => focus = Mathf.Clamp(value, 0, MainItems.Length - 1); }
+        public void Press(int item)
+        {
+            if (pending >= 0) return;
+            focus = item;
+            if (item == 1 && !CanContinue) { shakeSince = Time.unscaledTime; GameAudio.Ui(GameAudio.Sfx.Focus); Activate(item); return; }
+            GameAudio.Ui();
+            pressItem = item; pressSince = Time.unscaledTime;
+            pending = item; pendingAt = Time.unscaledTime + PressDelay;
+        }
+        private Rect LoopRect(int i)
+        {
+            var r = TitleItems[i];
+            return i == 0 ? new Rect(r.x - 24, r.y - 24, r.width + 48, r.height + 48) : new Rect(r.x - 16, r.y - 12, r.width + 32, r.height + 24);
+        }
+        // Pushed flat (0.9) in the first third, then a small overshoot (1.05) and back to 1.
+        private float PressScale(int item)
+        {
+            if (item != pressItem) return 1;
+            float t = (Time.unscaledTime - pressSince) / PressTime;
+            if (t < 0 || t >= 1) return 1;
+            if (t < 0.3f) return Mathf.Lerp(1, 0.9f, Mathf.SmoothStep(0, 1, t / 0.3f));
+            float k = (t - 0.3f) / 0.7f;
+            return 1 + (0.9f - 1) * Mathf.Cos(k * Mathf.PI * 1.5f) * (1 - k) + 0.05f * Mathf.Sin(k * Mathf.PI) * (1 - k);
+        }
+        private float Shake(int item)
+        {
+            float t = (Time.unscaledTime - shakeSince) / ShakeTime;
+            return item == 1 && t >= 0 && t < 1 ? Mathf.Sin(t * Mathf.PI * 6) * 5 * (1 - t) : 0;
+        }
+
         private void TitlePage()
         {
-            // Logo: two lines, cream and orange with a hard shadow, on a dark band like the reference.
-            HudKit.Fill(new Rect(0, 0, 1280, 720), new Color(0, 0, 0, 0.18f));
-            // The title 「ゴキの惑星」 (2026-10-26): the same two-line logo as before, the subtitle drawn the same way.
+            // The logo 「ゴキの惑星」 keeps its two-line form; the subtitle sits on a strip of paper tape below it.
             Logo(new Rect(240, 46, 800, 100), "ゴキの", HudKit.Cream);
             Logo(new Rect(240, 134, 800, 100), "惑星", HudKit.Orange);
-            Logo(new Rect(240, 238, 800, 52), "ゴキブリ侵略サバイバル", HudKit.Lime, logoSub, 3);   // the subtitle in the logo's style, half its size
+            PaperKit.TornTape(new Rect(460, 244, 360, 48), -1.5f, new Color(PaperKit.Tape.r, PaperKit.Tape.g, PaperKit.Tape.b, 0.86f));
+            PaperKit.Rotated(new Rect(460, 244, 360, 48), -1.5f, () => Heavy(new Rect(460, 244, 360, 48), "ゴキブリ侵略サバイバル", subtitle, PaperKit.Hex(0x586E0E)));
 
-            for (int i = 0; i < MainItems.Length; i++)
+            float kx = 1052;
+            kx = PaperKit.KeyHint(kx, 24, "↑↓", "えらぶ", keyStyle);
+            PaperKit.KeyHint(kx, 24, "Enter", "決定", keyStyle);
+            PaperKit.Lit(new Rect(30, 22, 120, 20), "ver 1.0", tiny, PaperKit.Light);
+
+            // The mouse moves the focus too, so the red-pen loop always marks what Enter or a click will do.
+            Vector2 mouse = Event.current.mousePosition;
+            if (mouse != lastMouse && pending < 0)
             {
-                var r = new Rect(900, 340 + i * 66, 330, 56);
-                bool enabled = i != 1 || CanContinue;
-                bool hit = i == 0 ? HudKit.Primary(r, MainItems[i], centredBig, true, focus == 0) : HudKit.Secondary(r, MainItems[i], centredBig, enabled, focus == i);
-                if (hit) { focus = i; Activate(i); }
+                for (int i = 0; i < TitleItems.Length; i++)
+                    if (TitleItems[i].Contains(mouse) && focus != i && lastMouse.x >= 0) { focus = i; GameAudio.Ui(GameAudio.Sfx.Focus); }
+                lastMouse = mouse;
             }
-            if (CanContinue)
-                GUI.Label(new Rect(904, 672, 330, 22), "記録  " + Save.checkpoint.savedAt + "  " + StageFor(Save.checkpoint.stage).title, tiny);
 
-            HudKit.Panel(new Rect(40, 640, 470, 46), HudKit.Lime);
-            Glyph(new Rect(60, 650, 140, 28), "◎", "潜入"); Glyph(new Rect(200, 650, 140, 28), "◆", "繁殖"); Glyph(new Rect(340, 650, 160, 28), "▲", "軍団侵略");
-            HudKit.Ink(tiny, HudKit.Muted, () => GUI.Label(new Rect(900, 20, 360, 22), "↑↓ 選択   Enter 決定   ver 1.0", tiny));
+            PaperKit.Cardboard(new Rect(950, 262, 360, 480), -2);
+            bool pressed = Input.GetMouseButton(0) && pending < 0;
+            var start = TitleItems[0];
+            bool overStart = start.Contains(mouse);
+            PaperKit.Scaled(start.center, PressScale(0), () =>
+            {
+                PaperKit.StickerDisc(start, TitleTilt[0], focus == 0 ? 0.6f : 0, overStart && pressed);
+                PaperKit.Rotated(start, TitleTilt[0], () =>
+                {
+                    var top = new Rect(start.x, start.y + 58 + (overStart && pressed ? 2 : 0), start.width, 48);
+                    Heavy(top, "はじめる", startStyle, PaperKit.StickerInk);
+                    HudKit.Ink(startSub, PaperKit.StickerInk, () => GUI.Label(new Rect(start.x, top.y + 50, start.width, 22), "ステージをえらぶ", startSub));
+                });
+            });
+            for (int i = 1; i < TitleItems.Length; i++)
+            {
+                bool enabled = i != 1 || CanContinue;
+                float alpha = i == 1 && !enabled ? 0.62f : i == 4 ? 0.74f : 0.88f;
+                if (focus == i && enabled) alpha = Mathf.Min(1, alpha + 0.08f);
+                var r = TitleItems[i];
+                if (pressed && r.Contains(mouse) && enabled) r.y += 2;
+                r.x += Shake(i);
+                PaperKit.Scaled(r.center, PressScale(i), () =>
+                {
+                    PaperKit.TapeStrip(r, TitleTilt[i], alpha, null, null, PaperKit.Ink);
+                    PaperKit.Rotated(r, TitleTilt[i], () =>
+                    {
+                        if (i != 1) { HudKit.Ink(i == 4 ? quitStyle : tapeStyle, i == 4 ? PaperKit.InkSoft : PaperKit.Ink, () => GUI.Label(r, MainItems[i], i == 4 ? quitStyle : tapeStyle)); return; }
+                        // つづきから shows which record it would load, or that there is none.
+                        string note = CanContinue ? "（" + StageFor(Save.checkpoint.stage).title + " " + ShortDate(Save.checkpoint.savedAt) + "）" : "（記録なし）";
+                        float w1 = tapeStyle.CalcSize(new GUIContent(MainItems[1])).x, w2 = tiny.CalcSize(new GUIContent(note)).x, x = r.center.x - (w1 + 4 + w2) / 2;
+                        HudKit.Ink(tapeStyle, PaperKit.InkSoft, () => GUI.Label(new Rect(x, r.y, w1 + 2, r.height), MainItems[1], tapeLeft));
+                        HudKit.Ink(tiny, PaperKit.InkSoft, () => GUI.Label(new Rect(x + w1 + 4, r.y + 13, w2 + 2, 20), note, tiny));
+                    });
+                });
+            }
+            FocusMark();
+
+            for (int i = 0; i < TitleItems.Length; i++)
+                if (pending < 0 && GUI.Button(TitleItems[i], GUIContent.none, GUIStyle.none)) Press(i);
+
+            PaperKit.Grade();
+        }
+        // The red-pen loop slides to the newly focused item (ease-out, 0.18 s) and the cockroach scurries after it,
+        // turned the way it runs; on a press the pen circles the item once more and the cockroach hops at it.
+        private void FocusMark()
+        {
+            float now = Time.unscaledTime;
+            var target = LoopRect(focus);
+            if (loopTarget < 0) { loopShown = target; roachShown = RoachRest(target); }
+            if (focus != loopTarget)
+            {
+                loopFrom = loopShown; loopTarget = focus; loopSince = now;
+            }
+            float t = Mathf.Clamp01((now - loopSince) / LoopMove), e = 1 - (1 - t) * (1 - t) * (1 - t);
+            loopShown = Lerp(loopFrom, target, e);
+            float press = pressItem == focus ? Mathf.Clamp01((now - pressSince) / PressTime) : 1;
+            float pulse = press < 1 ? 1 + 0.06f * Mathf.Sin(press * Mathf.PI) : 1;
+            var size = new Vector2((int)target.width, (int)target.height);
+            PaperKit.Scaled(loopShown.center, pulse, () => PaperKit.Rotated(loopShown, TitleTilt[focus] * 0.5f, () =>
+            {
+                PaperKit.PenLoop(loopShown, size);
+                // The second, slightly smaller loop: 「これに決めた」.
+                if (press < 1) PaperKit.Rotated(loopShown, 9, () => PaperKit.PenLoop(new Rect(loopShown.x + 6, loopShown.y + 5, loopShown.width - 12, loopShown.height - 10), size, Mathf.Clamp01(press * 4)));
+            }));
+
+            // The cockroach follows a little behind, faces where it runs and wiggles while it moves.
+            var rest = RoachRest(loopShown);
+            Vector2 before = roachShown.center;
+            if (Event.current.type == EventType.Repaint) roachShown = Lerp(roachShown, rest, 1 - Mathf.Exp(-Time.unscaledDeltaTime * 18));   // once per frame
+            Vector2 step = roachShown.center - before;
+            bool running = (rest.center - roachShown.center).sqrMagnitude > 4;
+            float facing = running && step.sqrMagnitude > 0.01f ? Mathf.Atan2(step.y, step.x) * Mathf.Rad2Deg : 8;
+            if (running) facing += Mathf.Sin(now * 55) * 7;
+            var drawn = roachShown;
+            if (press < 1) drawn.x += 12 * Mathf.Sin(Mathf.Clamp01(press * 1.6f) * Mathf.PI);   // the hop at the pressed item
+            PaperKit.Roach(drawn, facing);
+        }
+        private static Rect RoachRest(Rect loop) => new Rect(loop.x - 62, loop.center.y - 28, 70, 56);
+        private static Rect Lerp(Rect a, Rect b, float t) => new Rect(Mathf.Lerp(a.x, b.x, t), Mathf.Lerp(a.y, b.y, t), Mathf.Lerp(a.width, b.width, t), Mathf.Lerp(a.height, b.height, t));
+        private static string ShortDate(string savedAt) => savedAt != null && savedAt.Length >= 16 ? savedAt.Substring(5) : savedAt;   // yyyy/MM/dd HH:mm -> MM/dd HH:mm
+        // The OS font has no heavy weight: drawing the label twice, 1 px apart, thickens it.
+        private static void Heavy(Rect r, string label, GUIStyle style, Color color)
+        {
+            HudKit.Ink(style, color, () => { GUI.Label(r, label, style); GUI.Label(new Rect(r.x + 1, r.y, r.width, r.height), label, style); });
         }
         // The OS font has no heavy weight: a hard shadow plus a doubled stroke gives the logo its mass.
         private void Logo(Rect r, string label, Color color) => Logo(r, label, color, logo, 5);
@@ -211,11 +367,6 @@ namespace GokiTakeover
         {
             HudKit.Shadowed(r, label, style, color, shadow);
             GUI.color = color; GUI.Label(new Rect(r.x + 2, r.y, r.width, r.height), label, style); GUI.Label(new Rect(r.x + 1, r.y + 1, r.width, r.height), label, style); GUI.color = Color.white;
-        }
-        private void Glyph(Rect r, string glyph, string label)
-        {
-            HudKit.Ink(big, HudKit.Lime, () => GUI.Label(new Rect(r.x, r.y - 2, 30, 30), glyph, big));
-            GUI.Label(new Rect(r.x + 30, r.y, r.width - 30, 28), label, text);
         }
 
         private void StageSelect()
