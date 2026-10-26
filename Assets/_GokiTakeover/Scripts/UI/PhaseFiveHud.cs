@@ -223,7 +223,7 @@ namespace GokiTakeover
         {
             bool final = progress.Current >= StageProgress.Phase.FinalDefence;
             Panel(r, final ? Orange : Lime);
-            GUI.Label(new Rect(r.x + 18, r.y + 8, r.width - 30, 22), "STAGE " + StageNumber + "  /  " + progress.Stage.title + (Floors ? "  ・  " + Floors.FloorName(session.Player.position) : ""), small);
+            GUI.Label(new Rect(r.x + 18, r.y + 8, r.width - 30, 22), "STAGE " + StageNumber + "  /  " + progress.Stage.title + (Floors ? "  ・  " + Floors.FloorName(session.Player.position) : "") + DayText(), small);
             Ink(title, final ? Orange : Cream, () => GUI.Label(new Rect(r.x + 18, r.y + 30, r.width - 30, 38),
                 progress.Current == StageProgress.Phase.Retreat ? "人間が逃げていく！" : final ? "最終防衛を耐えろ" : "部屋を乗っ取れ", title));
             Gauge(new Rect(r.x + 18, r.y + 76, r.width - 36, 30), "◆ 食料確保", colony.TotalCollected + " / " + progress.Stage.foodGoal, progress.FoodGauge);
@@ -366,6 +366,10 @@ namespace GokiTakeover
                     bool alarm = human.State != HumanAIController.HumanState.Routine || h == 0 && reaction.CurrentAction != HumanReaction.Activity.None;
                     Marker(human.transform.position + Vector3.up * (human.EyeHeight + 0.9f), "▲ " + (People ? human.Label : "人間") + "・" + (h == 0 ? ResidentText() : StateText(human)), alarm ? Orange : Cream, false, view);
                 }
+                var guests = Guests;   // Stage 3: the customers (they only scream)
+                if (guests)
+                    foreach (var c in guests.Pool)
+                        if (c.Present) Marker(c.transform.position + Vector3.up * 3.9f, "△ " + c.Kind + "・" + (c.Current == DinerCustomer.Phase.Seated ? "食事中" : c.Current == DinerCustomer.Phase.Flee ? "逃げる！" : "歩いている"), c.Current == DinerCustomer.Phase.Flee ? Orange : Cream, false, view);
                 var cage = Cage;
                 if (cage && cage.Count > 0) Marker(cage.transform.position + Vector3.up * 1.4f, "◇ 虫かご " + cage.Count + "匹", Lime, false, view);
                 var cat = Pet;
@@ -641,10 +645,10 @@ namespace GokiTakeover
         // Stage 3 (町中華): the owner-cook's ladle swats like the slipper; the floors are joined by the stairs and a duct.
         private static readonly string[] DinerDangers =
         {
-            "店主のお玉  ―  橙の枠から逃げる。台・低い壁も届く", "店主の熱湯  ―  橙の帯に流れる。帯から横へ",
-            "おかみさんのお盆  ―  横長の橙の四角。前後へ逃げる", "アルコールスプレー  ―  浴びると数秒遅くなる",
+            "店主のお玉・熱湯  ―  橙の枠・橙の帯から逃げる", "おかみさん  ―  お盆は横長の四角。スプレーで遅くなる",
             "バイトのデッキブラシ  ―  橙の四角ごと掃き飛ばす", "濡れた床（モップがけ）  ―  滑って止まれない",
-            "罠・毒餌・殺虫剤・燻煙剤  ―  店主が使う"
+            "客  ―  見つかると悲鳴。店員が駆けつける", "営業時間  ―  仕込み・ランチ・中休み・ディナー・閉店",
+            "罠・毒餌・殺虫剤・燻煙剤  ―  閉店ごとに罠が増える"
         };
         // Stage 2: the father keeps the Stage 1 tools; the mother and son bring their own.
         private static readonly string[] HouseDangers =
@@ -1190,6 +1194,20 @@ namespace GokiTakeover
             var wet = Wet;
             if (wet && wet.PlayerOnWet) { Banner("濡れた床！  滑って止まれない", 366, Orange); return true; }
             return false;
+        }
+        // Stage 3: the time of day on the mission card ("・ ランチ 1:23").
+        private DinerBusiness business;
+        private bool businessLooked;
+        private DinerBusiness Business { get { if (!businessLooked) { businessLooked = true; business = FindFirstObjectByType<DinerBusiness>(); } return business; } }
+        private DinerCustomers guestsFound;
+        private bool guestsLooked;
+        private DinerCustomers Guests { get { if (!guestsLooked) { guestsLooked = true; guestsFound = FindFirstObjectByType<DinerCustomers>(); } return guestsFound; } }
+        private string DayText()
+        {
+            var b = Business;
+            if (!b || progress.Current != StageProgress.Phase.Invasion) return "";
+            int s = Mathf.Max(0, Mathf.CeilToInt(b.Remaining));
+            return "  ・  " + b.Name + " " + s / 60 + ":" + (s % 60).ToString("00");
         }
         private WetFloor wetFloor;
         private bool wetLooked;

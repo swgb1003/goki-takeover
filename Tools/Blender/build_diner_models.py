@@ -11,6 +11,9 @@ Okami (おかみさん, step 2): a white kappogi smock over a navy skirt, a dott
 a round red lacquered tray (お盆) in the right hand where the others hold the slipper, an alcohol spray bottle in the left.
 Baito (バイト, step 2): navy cap, red T-shirt with the shop panel, black waist apron, jeans, black rubber boots, a mop
 in the right hand and a deck brush (デッキブラシ) in the left, held like the lance.
+Customers (step 3): a salaryman (navy suit, tie, glasses, briefcase), a student (black gakuran with a stand collar,
+a school bag) and a grandma (grey bun, purple cardigan, long skirt, glasses, handbag). The bag hangs from the left fist
+like the lance (its bottom is nozzleTip). Their right hands are empty.
 Only the actors built here are written. No third-party assets.
 """
 import bpy, math, json, sys
@@ -475,6 +478,130 @@ def baito_parts():
     parts.append((fuse(to_object('Bristles', bristles), .006, 1), (300, 140, 60), lambda p, n: BRISTLE, hand_l, .5))
     return parts, tip
 
+# ---------------------------------------------------------------- customers (step 3)
+SUIT = (.08, .10, .18, .14); SUIT_PANTS = (.20, .21, .23, .12); SHIRT_W = (.90, .90, .88, .12); TIE = (.55, .07, .08, .35)
+GAKURAN = (.03, .03, .04, .14); GOLD = (.85, .66, .18, .75); SNEAKER_W = (.90, .90, .88, .30)
+CARDIGAN = (.38, .22, .44, .10); GRANNY_SKIRT = (.55, .47, .36, .10); GRANNY_HAIR = (.70, .70, .70, .30)
+LEATHER = (.10, .07, .05, .55); BAG_BROWN = (.40, .24, .12, .40); BAG_BLACK = (.06, .06, .07, .40); FRAME = (.12, .10, .08, .60)
+
+def jacket_shape(bottom=1.86, collar=False):
+    """A jacket down to the hips; the stand collar of a school uniform when collar is set."""
+    s = Shape()
+    rings = [(bottom, .43, .29, .01), (2.05, .42, .285, .01), (2.30, .41, .285, .015), (2.60, .405, .285, .02), (2.90, .41, .285, .025),
+             (3.05, .412, .275, .02), (3.18, .415, .25, .005), (3.28, .405, .218, -.01), (3.36, .31, .176, -.02), (3.43, .18, .15, -.035)]
+    s.sweep([V(0, y, cz) for y, _, _, cz in rings], [w for _, w, _, _ in rings], [d for _, _, d, _ in rings], V(0, 0, 1), 2.6, 40)
+    for x in (-1, 1):
+        sh = P('Arm_R'); sh = V(x * sh.x, sh.y, sh.z)
+        s.ellipsoid(sh + V(0, -.03, 0), V(.125, .10, .128))
+    if collar:
+        ring = [V(math.sin(a) * .172, 3.48, -.035 + math.cos(a) * .158) for a in [i * math.tau / 30 for i in range(31)]]
+        s.chain(ring, [.05] * 31, 10)
+    return s
+
+def suit_color(p, n):
+    front = p.z > .18
+    v = (p.y - 2.62) * .30   # the open V of the jacket over the shirt
+    if front and 2.62 < p.y < 3.46 and abs(p.x) < v:
+        return TIE if abs(p.x) < .035 and p.y < 3.4 else SHIRT_W
+    return R.fabric(SUIT, p, .05, 50)
+
+def gakuran_color(p, n):
+    if p.z > .2 and abs(p.x) < .02 and any(abs(p.y - y) < .02 for y in (2.2, 2.5, 2.8, 3.1)): return GOLD
+    return R.fabric(GAKURAN, p, .04, 50)
+
+def buttons_column(ys):
+    s = Shape()
+    for y in ys: s.ellipsoid(V(0, y, coat_front_z(y) + .01), V(.026, .026, .016), None, 14, 8)
+    return s
+
+def glasses():
+    s = Shape()
+    for x in (-1, 1):
+        c = V(x * R.EYE_C.x, R.EYE_C.y, R.EYE_C.z + .045)
+        ring = [c + V(math.cos(a) * .042, math.sin(a) * .032, 0) for a in [i * math.tau / 20 for i in range(21)]]
+        s.chain(ring, [.006] * 21, 6)
+        s.chain([c + V(x * .042, 0, 0), V(x * .155, R.EYE_C.y + .01, -.02)], [.006, .006], 6)   # the arm to the ear
+    s.chain([V(-.034, R.EYE_C.y + .005, R.EYE_C.z + .05), V(.034, R.EYE_C.y + .005, R.EYE_C.z + .05)], [.006, .006], 6)   # bridge
+    return s
+
+def shoe(x, color):
+    s = Shape(); cx = x * .222; sx = 1 if x > 0 else -1
+    s.ellipsoid(V(cx, .12, -.09), V(.1, .1, .11))
+    s.sweep([V(cx, .12, -.12), V(cx + sx * .006, .11, .1), V(cx + sx * .016, .09, .27), V(cx + sx * .018, .075, .35)], [.105, .11, .11, .095], [.09, .08, .06, .04], V(0, 1, 0), 2.6, 22)
+    s.sweep([V(cx, .02, -.2), V(cx, .02, .37)], [.11, .105], [.022, .022], V(0, 1, 0), 4.0, 20)
+    return s
+
+def bag_parts(width, height, depth, hang):
+    """A bag in the left hand, held like the lance (hanging from the fist): its far end is the tool tip."""
+    w, d, p, t = tool_frame()
+    c = w + d * (hang + height / 2)
+    body = Shape(); body.sweep([w + d * hang, w + d * (hang + height)], [width / 2, width / 2], [depth / 2, depth / 2], p, 6.0, 20)   # hangs down from the fist
+    handle = Shape(); handle.chain([w + d * hang - t * .08, w - d * .02, w + d * hang + t * .08], [.012] * 3, 8)
+    return body, handle, w + d * (hang + height)
+
+def scalp_hair(face, hair, front=.15):
+    def f(p, n):
+        if p.y > 3.74 and (p.z < -.02 or abs(p.x) > front) or p.y > 3.93:
+            k = 1 + .25 * noise.noise(V(p.x * 70, p.y * 30, p.z * 70))
+            return (hair[0] * k, hair[1] * k, hair[2] * k, hair[3])
+        return face(p, n)
+    return f
+
+def customer_common(parts, name, skin, lips, hair, jacket, jacket_color, sleeve_color, legs, legs_color, shoe_color, glasses_on, bag, bag_color, brow):
+    head = R.head_object()
+    parts.append((head, (2700, 1250, 520), scalp_hair(skin_tone(skin, .08, lips, brow, .01), hair), R.head_weights, 1.0))
+    for x in (-R.EYE_C.x, R.EYE_C.x):
+        parts.append((to_object(name + '_Eye', R.eye_shape(x)), (260, 110, 40), lambda p, n, x=x: R.eye_color(p, n, x), R.const('Head'), .9))
+    if glasses_on: parts.append((fuse(to_object(name + '_Glasses', glasses()), .004, 1), (300, 140, 60), lambda p, n: FRAME, R.const('Head'), .4))
+    parts.append((fuse(to_object(name + '_Jacket', jacket), .0105, 3, cloth_folds), (2400, 1200, 520), jacket_color, coat_weights, 1.0))
+    parts.append((legs, (1500, 760, 330), legs_color, R.pants_weights if legs.name.endswith('Trousers') else lower_body_weights, 1.0))
+    for x in (-1, 1):
+        sl = fuse(to_object(name + '_Sleeve', sleeve_shape(x, .92, [.13, .13, .122, .118, .112, .104, .092], 0)), .0095, 2, cloth_folds)
+        parts.append((sl, (900, 430, 180), sleeve_color, R.arm_weights, 1.0))
+        hs, tips = R.hand_shape(x > 0)
+        parts.append((fuse(to_object(name + '_Hand', hs), .0056, 2), (700, 330, 130), skin_tone(skin, 0, lips), R.hand_weights(x > 0), 1.0))
+        side = 'L' if x < 0 else 'R'
+        shoe_w = lambda p, side=side: R.W(('Shin_' + side, smooth(.22, .34, p.y)), ('Foot_' + side, 1 - smooth(.22, .34, p.y)))
+        parts.append((fuse(to_object(name + '_Shoe', shoe(x, shoe_color)), .0075, 2), (520, 250, 100), lambda p, n: shoe_color, shoe_w, 1.0))
+    body, handle, tip = bag
+    hand_l = R.const('Hand_L')
+    parts.append((fuse(to_object(name + '_Bag', body), .006, 1), (420, 200, 80), lambda p, n: bag_color, hand_l, .5))
+    parts.append((fuse(to_object(name + '_BagHandle', handle), .005, 1), (160, 80, 30), lambda p, n: bag_color, hand_l, .4))
+    return tip
+
+def salaryman_parts():
+    parts = []
+    legs = fuse(to_object('Salaryman_Trousers', R.pants_shape()), .0115, 3, R.pants_detail)
+    tip = customer_common(parts, 'Salaryman', (.56, .38, .29, .34), (.45, .22, .2, .45), (.05, .04, .03, .30), jacket_shape(1.84), suit_color,
+                          lambda p, n: R.fabric(SUIT, p, .05, 50), legs, lambda p, n: R.fabric(SUIT_PANTS, p, .06, 40), LEATHER, True,
+                          bag_parts(.5, .38, .12, .05), LEATHER, (.06, .05, .04))
+    return parts, tip
+
+def student_parts():
+    parts = []
+    legs = fuse(to_object('Student_Trousers', R.pants_shape()), .0115, 3, R.pants_detail)
+    jacket = jacket_shape(1.92, True)
+    tip = customer_common(parts, 'Student', (.60, .43, .33, .34), (.52, .26, .24, .45), (.03, .025, .02, .30), jacket, gakuran_color,
+                          lambda p, n: R.fabric(GAKURAN, p, .04, 50), legs, lambda p, n: R.fabric(GAKURAN, p, .04, 50), SNEAKER_W, False,
+                          bag_parts(.44, .34, .14, .05), BAG_BLACK, (.04, .03, .02))
+    return parts, tip
+
+def grandma_parts():
+    parts = []
+    legs = Shape(); legs.sweep([V(0, 2.02, 0), V(0, 1.6, .005), V(0, 1.0, .01), V(0, .5, .01)], [.42, .43, .40, .37], [.29, .29, .28, .27], V(0, 0, 1), 2.4, 36)   # a long skirt from the waist
+    legs = fuse(to_object('Grandma_Skirt', legs), .011, 3, cloth_folds)
+    for x in (-1, 1):   # stockinged ankles
+        side = 'L' if x < 0 else 'R'
+        ankle = Shape(); ankle.capsule(V(x * .222, .55, -.03), V(x * .222, .16, -.035), .068, .066, 18)
+        parts.append((fuse(to_object('Grandma_Ankle', ankle), .0075, 2), (240, 110, 50), lambda p, n: (.48, .36, .30, .3), lambda p, side=side: R.W(('Shin_' + side, smooth(.2, .32, p.y)), ('Foot_' + side, 1 - smooth(.2, .32, p.y))), 1.0))
+    tip = customer_common(parts, 'Grandma', (.60, .45, .38, .36), (.55, .30, .30, .45), GRANNY_HAIR, jacket_shape(1.80), lambda p, n: R.fabric(CARDIGAN, p, .08, 60),
+                          lambda p, n: R.fabric(CARDIGAN, p, .08, 60), legs, lambda p, n: R.fabric(GRANNY_SKIRT, p, .06, 40), (.30, .20, .14, .3), True,
+                          bag_parts(.34, .28, .13, .08), BAG_BROWN, (.55, .55, .55))
+    bun = Shape(); bun.ellipsoid(V(0, 3.97, -.235), V(.10, .09, .09), R.rot_xyz(x=-25), 28, 18)
+    parts.append((fuse(to_object('Grandma_Bun', bun), .008, 2, lambda p, n: .004 * math.sin(p.y * 120 + p.x * 60)), (600, 280, 120),
+                  lambda p, n: (GRANNY_HAIR[0] * (1 + .15 * math.sin(p.x * 150 + p.y * 90)), GRANNY_HAIR[1], GRANNY_HAIR[2], GRANNY_HAIR[3]), R.const('Head'), .8))
+    return parts, tip
+
 # ---------------------------------------------------------------- build (same as the family's)
 def build(actor, parts, material):
     ids = {b[0]: i for i, b in enumerate(R.BONES)}
@@ -514,7 +641,7 @@ vc = nodes.new('ShaderNodeVertexColor'); vc.layer_name = 'Surface'; links.new(vc
 inv = nodes.new('ShaderNodeMath'); inv.operation = 'SUBTRACT'; inv.inputs[0].default_value = 1
 links.new(vc.outputs['Alpha'], inv.inputs[1]); links.new(inv.outputs[0], bsdf.inputs['Roughness'])
 
-MAKERS = {'Chef': chef_parts, 'Okami': okami_parts, 'Baito': baito_parts}
+MAKERS = {'Chef': chef_parts, 'Okami': okami_parts, 'Baito': baito_parts, 'Salaryman': salaryman_parts, 'Student': student_parts, 'Grandma': grandma_parts}
 only = None
 if '--only' in sys.argv: only = sys.argv[sys.argv.index('--only') + 1].split(',')
 all_reports = []; all_lods = {}

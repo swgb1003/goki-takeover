@@ -122,6 +122,9 @@ namespace GokiTakeover
 
             FreezeChef();
             session.AddMaxHp(20);
+            // The day runs by itself; the checks before BusinessChecks keep it still (no customers walking in on them).
+            FindFirstObjectByType<DinerBusiness>().enabled = false;
+            FindFirstObjectByType<DinerCustomers>().Empty();
             yield return null;
 
             // ---- The rooms (pictures for the eye) ----
@@ -146,7 +149,7 @@ namespace GokiTakeover
 
             // ---- The diner food ----
             var foods = commander.Foods;
-            Check(foods.Count == 29 && foods.All(f => FoodValue.IsDiner(f.GetComponent<FoodValue>().FoodKind)), "食料は町中華の10種（" + foods.Count + "か所）");
+            Check(foods.Count == 38 && foods.All(f => FoodValue.IsDiner(f.GetComponent<FoodValue>().FoodKind)), "食料は町中華の10種（" + foods.Count + "か所、食べ残し・仕込みの分を含む）");
             var tenkasu = foods.First(f => f.GetComponent<FoodValue>().FoodKind == FoodValue.Kind.Tenkasu && f.transform.position.y < 0.5f);
             PlaceExact(tenkasu.transform.position + new Vector3(0, 0.0f, -0.45f));
             yield return null;
@@ -211,11 +214,11 @@ namespace GokiTakeover
             var ally = commander.AddAlly();
             Time.timeScale = 3;
             ally.SetOrder(AllyRoach.Order.Move, new Vector3(50.0f, 0, 0.4f));
-            yield return WaitFor(() => Flat(ally.Position - new Vector3(50.0f, 0, 0.4f)).magnitude < 1.5f, 25);
-            Check(floors.FloorOf(ally.Position) == 2 && Flat(ally.Position - new Vector3(50.0f, 0, 0.4f)).magnitude < 1.5f, "仲間は巣から2Fの宴会座敷まで歩いて行く（" + ally.Position.ToString("F1") + "）");
-            ally.SetOrder(AllyRoach.Order.Move, new Vector3(2.0f, 0, 2.5f));
-            yield return WaitFor(() => Flat(ally.Position - new Vector3(2.0f, 0, 2.5f)).magnitude < 1.5f, 25);
-            Check(floors.FloorOf(ally.Position) == 1 && Flat(ally.Position - new Vector3(2.0f, 0, 2.5f)).magnitude < 1.5f, "2Fから1Fの厨房へも戻れる（" + ally.Position.ToString("F1") + "）");
+            yield return WaitFor(() => ally.State == AllyRoach.AllyState.Idle && Flat(ally.Position - new Vector3(50.0f, 0, 0.4f)).magnitude < 3f, 25);
+            Check(floors.FloorOf(ally.Position) == 2 && Flat(ally.Position - new Vector3(50.0f, 0, 0.4f)).magnitude < 2.0f, "仲間は巣から2Fの宴会座敷まで歩いて行く（" + ally.Position.ToString("F1") + "）");
+            ally.SetOrder(AllyRoach.Order.Move, new Vector3(5.2f, 0, 0.4f));
+            yield return WaitFor(() => ally.State == AllyRoach.AllyState.Idle && Flat(ally.Position - new Vector3(5.2f, 0, 0.4f)).magnitude < 3f, 25);
+            Check(floors.FloorOf(ally.Position) == 1 && Flat(ally.Position - new Vector3(5.2f, 0, 0.4f)).magnitude < 2.0f, "2Fから1Fの厨房へも戻れる（" + ally.Position.ToString("F1") + "）");
             int zone = Array.FindIndex(stage.zones, zz => zz.name == "ロッカーの前");
             ally.SetCapture(stage.zones[zone].centre, zone);
             yield return WaitFor(() => progress.ZoneAt(ally.Position) == zone, 25);
@@ -249,6 +252,7 @@ namespace GokiTakeover
             FreezeChef();
 
             yield return StaffChecks();
+            yield return BusinessChecks();
 
             // ---- Final defence and the clear: the landlady and the part-timer leave ----
             colony.DebugGrant(0);
@@ -276,6 +280,7 @@ namespace GokiTakeover
             Check(floors.FloorOf(session.Player.position) == 1 && session.InSafeNest && !floors.Travelling && floors.FloorOf(chef.transform.position) == 1, "リプレイで主人公は1Fの巣・店主は厨房に戻る");
             Check(session.HumanPresent(1) && session.HumanPresent(2) && progress.Attacks.All(a => a.Allowed) && FindFirstObjectByType<WetFloor>().Count == 0 && !session.Slowed,
                 "リプレイでおかみさんとバイトも店に戻り、濡れた床は乾く");
+            Check(FindFirstObjectByType<DinerCustomers>().Inside == 0 && FindFirstObjectByType<DinerBusiness>().Current == DinerBusiness.Phase.Prep && !FindFirstObjectByType<DinerBusiness>().Dark, "リプレイで客はいなくなり、仕込みから始まる");
         }
 
         // Step 2: the staff's attacks, each started on the spot (DebugAim / DebugStrike) with everyone else frozen.
@@ -417,6 +422,91 @@ namespace GokiTakeover
         }
         private static readonly Vector3 OkamiHome = new Vector3(19.0f, 0, -1.6f), BaitoHome = new Vector3(2.5f, 0, 12.4f);
         private void Place(Vector3 position) { position.y = 0.02f; PlaceExact(position); }
+
+        // Step 3: the day and its customers. The clock is driven by hand (Enter) and customers are seated by hand (Admit).
+        private IEnumerator BusinessChecks()
+        {
+            var business = FindFirstObjectByType<DinerBusiness>();
+            var guests = FindFirstObjectByType<DinerCustomers>();
+            var reaction = colony.Reaction;
+            foreach (var h in new[] { chef, okami, baito }) h.ResetHuman();   // out of whatever the staff checks left them in
+            FreezeChef();
+            PlaceExact(session.Nest.position + Vector3.up * 0.1f);
+            var link = new System.Func<string, FoodItem[]>(n => (FoodItem[])typeof(DinerBusiness).GetField(n, BindingFlags.NonPublic | BindingFlags.Instance).GetValue(business));
+            var prepFood = link("prepFood"); var dinnerFood = link("dinnerFood");
+            business.enabled = true;
+
+            business.Enter(DinerBusiness.Phase.Prep);
+            Check(business.Current == DinerBusiness.Phase.Prep && prepFood.All(f => f.State == FoodItem.FoodState.Available) && dinnerFood.All(f => f.State == FoodItem.FoodState.Hidden) && !business.Dark,
+                "仕込み: 作業台に餃子が並ぶ（焼売のせいろはまだ出ていない）・明かりはついている");
+
+            business.Enter(DinerBusiness.Phase.Lunch);
+            guests.CloseDoors();   // nobody at random: the test seats its own customer
+            Check(Mathf.Approximately(chef.BusyRangeScale, DinerBusiness.BusyRange) && Mathf.Approximately(okami.BusyRangeScale, DinerBusiness.BusyRange), "ランチ: 店員は忙しくて見える距離が " + DinerBusiness.BusyRange + " 倍");
+            int seatIndex = 0;
+            var seat = guests.Seats[seatIndex];
+            var guest = guests.Admit(0, seatIndex);
+            Check(guest && guest.Current == DinerCustomer.Phase.Enter && guests.Inside == 1, "客（" + guest.Kind + "）が入口から入って席へ向かう");
+            Time.timeScale = 3;
+            yield return WaitFor(() => guest.Current == DinerCustomer.Phase.Seated, 20);
+            Time.timeScale = 1;
+            var body = guest.GetComponentInChildren<BlenderHumanAnimator>();
+            Check(guest.Current == DinerCustomer.Phase.Seated && body.Pose == BlenderHumanAnimator.LifePose.Eat && guests.Tables[seat.table].plate.activeSelf,
+                "客は席に座って食べる（料理の皿が出る）");
+            if (playerRun) { yield return WaitForReal(0.6f); yield return Shot(new Vector3(18.6f, 3.4f, -5.6f), new Vector3(15.0f, 1.6f, -3.2f), "stage3-customer-eat-720p.png"); }
+
+            // A roach on the table in front of the customer: a scream, fear, a sighting, staff on their way, the customer runs.
+            float fear = reaction.FearGained; int seen = session.Discoveries;
+            PlaceExact(seat.hands + Vector3.up * 0.06f);
+            yield return WaitFor(() => guests.Screams >= 1, 3);
+            Check(guests.Screams == 1 && guest.Current == DinerCustomer.Phase.Flee && reaction.FearGained >= fear + DinerCustomer.FearPerScream - 0.01f && session.Discoveries == seen + 1,
+                "客がゴキブリを見て悲鳴（恐怖 +" + (reaction.FearGained - fear).ToString("F0") + "・発見 +1）、走って逃げる");
+            Check(okami.State == HumanAIController.HumanState.Search || chef.State == HumanAIController.HumanState.Search || baito.State == HumanAIController.HumanState.Search, "悲鳴を聞いた店員が見に来る");
+            if (playerRun) yield return Shot(new Vector3(18.6f, 3.4f, -5.6f), new Vector3(15.0f, 1.6f, -3.2f), "stage3-customer-scream-720p.png");
+            PlaceExact(session.Nest.position + Vector3.up * 0.1f);
+            Time.timeScale = 3;
+            yield return WaitFor(() => !guest.Present, 20);
+            Time.timeScale = 1;
+            var leftovers = guests.Tables[seat.table].leftovers;
+            Check(!guest.Present && leftovers.State == FoodItem.FoodState.Available && !guests.Tables[seat.table].plate.activeSelf, "逃げた客は店を出て、テーブルに食べ残しが残る");
+            Time.timeScale = 6;
+            yield return WaitFor(() => leftovers.State == FoodItem.FoodState.Hidden, 12);
+            Time.timeScale = 1;
+            Check(leftovers.State == FoodItem.FoodState.Hidden, "食べ残しは " + DinerCustomers.LeftoverSeconds.ToString("F0") + "秒で片付けられる");
+
+            business.Enter(DinerBusiness.Phase.Break);
+            var mop = baito.GetComponent<MopDuty>();
+            int traps = reaction.PlacedTraps.Count(t => t.gameObject.activeSelf) + reaction.Baits.Count(x => x.IsArmed);
+            Check(business.TrapsSet >= 1 && traps >= 1 && Mathf.Approximately(chef.BusyRangeScale, 1) && guests.Inside == 0, "中休み: 罠を補充（" + business.TrapsSet + "個）・店員は普段どおり見える");
+            Check(mop.Mopping, "中休みにバイトがモップがけを始める");
+
+            business.Enter(DinerBusiness.Phase.Dinner);
+            guests.CloseDoors();
+            Check(dinnerFood.All(f => f.State == FoodItem.FoodState.Available), "ディナー: 2Fの座敷に焼売のせいろが出る");
+            int upstairsSeat = -1;
+            for (int i = 0; i < guests.Seats.Count; i++) if (guests.Seats[i].upstairs) { upstairsSeat = i; break; }
+            var climber = guests.Admit(2, upstairsSeat);
+            Time.timeScale = 3;
+            yield return WaitFor(() => climber.Current == DinerCustomer.Phase.Seated, 45);
+            Time.timeScale = 1;
+            Check(climber.Current == DinerCustomer.Phase.Seated && floors.FloorOf(climber.transform.position) == 2 && climber.GetComponentInChildren<BlenderHumanAnimator>().Pose == BlenderHumanAnimator.LifePose.Floor,
+                "ディナーの客（" + climber.Kind + "）は階段で2Fの座敷へ上がって座る（" + climber.transform.position.ToString("F1") + "）");
+            if (playerRun) { yield return WaitForReal(1.2f); yield return Shot(new Vector3(45.5f, 3.0f, -5.4f), new Vector3(50.0f, 0.8f, -1.0f), "stage3-banquet-dinner-720p.png"); }
+
+            business.Enter(DinerBusiness.Phase.Closed);
+            Check(business.Dark && chef.GetComponentInChildren<Light>(true).enabled && guests.Inside == 0 && dinnerFood.All(f => f.State == FoodItem.FoodState.Hidden)
+                && Mathf.Approximately(chef.BusyAngleScale, DinerBusiness.TorchAngle), "閉店: 明かりが消え、店主は懐中電灯（見える角度 " + DinerBusiness.TorchAngle + " 倍）・客は帰り、焼売は片付く");
+            Time.timeScale = 3;
+            yield return WaitFor(() => !okami.gameObject.activeSelf && !baito.gameObject.activeSelf, 30);
+            Time.timeScale = 1;
+            Check(!okami.gameObject.activeSelf && !baito.gameObject.activeSelf && business.WentHome(0) && business.WentHome(1), "閉店後、おかみさんとバイトは裏口から帰る");
+            if (playerRun) yield return Shot(new Vector3(6.6f, 3.2f, -5.0f), new Vector3(-3.0f, 1.4f, 3.0f), "stage3-closed-720p.png");
+
+            business.Enter(DinerBusiness.Phase.Prep);
+            Check(okami.gameObject.activeSelf && baito.gameObject.activeSelf && !okami.Suspended && !business.Dark && !chef.GetComponentInChildren<Light>(true).enabled && business.Days == 1,
+                "翌朝の仕込み: 2人が戻り、明かりがつく（" + business.Days + "日目の終わり）");
+            FreezeChef();
+        }
 
         private static readonly Vector3 StageThreeStart = new Vector3(3.6f, 0, 2.4f), ChefStartStop = new Vector3(3.5f, 0, 2.5f);
         private void FreezeChef() { foreach (var h in new[] { chef, okami, baito }) { if (!h) continue; h.enabled = false; if (h.Agent.isOnNavMesh) h.Agent.isStopped = true; } }

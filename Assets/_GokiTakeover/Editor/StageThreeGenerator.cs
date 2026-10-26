@@ -170,6 +170,16 @@ namespace GokiTakeover.Editor
                 FoodModelIntegration.Dress(copy.transform, meshes[(int)kind], foodArt.material, (i * 137) % 360);
                 foods.Add(copy.GetComponent<FoodItem>()); known.Add(isKnown);
             }
+            // The day's own food (step 3): gyoza laid out while prepping, leftovers per table (hidden till a customer leaves food).
+            foreach (var (kind, at, name) in BusinessFood())
+            {
+                var copy = UnityEngine.Object.Instantiate(template, foodRoot);
+                copy.name = name;
+                copy.transform.SetPositionAndRotation(at, Quaternion.Euler(0, 30 + foods.Count * 53, 0));
+                copy.GetComponent<FoodValue>().Configure(kind);
+                FoodModelIntegration.Dress(copy.transform, meshes[(int)kind], foodArt.material, (foods.Count * 137) % 360);
+                foods.Add(copy.GetComponent<FoodItem>()); known.Add(false);
+            }
             UnityEngine.Object.DestroyImmediate(template);
             var scouts = new List<Vector3>();
             foreach (var s in Scouts)
@@ -237,6 +247,9 @@ namespace GokiTakeover.Editor
             pLink.ApplyModifiedPropertiesWithoutUndo();
             var floorLinks = stageRoot.gameObject.AddComponent<FloorLinks>();
             floorLinks.Configure(session, links, SecondFloorX);
+
+            // ---- The day and its customers (step 3) ----
+            BuildBusiness(stageRoot, session, commander, colony, progress, chef, room);
 
             EditorSceneManager.SaveScene(scene, ScenePath);
             GeneratedAssets.Mark(AssetDatabase.LoadAssetAtPath<SceneAsset>(ScenePath));

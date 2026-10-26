@@ -127,8 +127,25 @@ namespace GokiTakeover
         public IFloorTraveller Floors { get; set; }
         public bool OnStairs => Floors != null && agent && agent.isOnOffMeshLink;
         private bool Living => Life != null && State == HumanState.Routine && Life.Leads;
-        public float SightAngle => Settings.sightAngle * (Living ? Life.SightAngleScale : 1);
-        public float SightRange => Settings.sightDistance * (Living ? Life.SightRangeScale : 1);
+        public float SightAngle => Settings.sightAngle * (Living ? Life.SightAngleScale : 1) * BusyAngleScale;
+        public float SightRange => Settings.sightDistance * (Living ? Life.SightRangeScale : 1) * BusyRangeScale;
+        // Stage 3: busy at work (lunch, dinner) or looking only where the torch shines (after closing). 1: unchanged.
+        public float BusyAngleScale { get; set; } = 1f;
+        public float BusyRangeScale { get; set; } = 1f;
+        /// <summary>Stage 3: a customer screamed over there. A person going about their round goes to look (search).</summary>
+        public void Alert(Vector3 point)
+        {
+            if (State == HumanState.Chase || State == HumanState.Attack || Suspended) return;
+            State = HumanState.Search; lastSeen = point; lostTime = 0.6f; wandering = false; Detection = Mathf.Max(Detection, 0.5f);
+            if (agent && agent.isOnNavMesh) SetDestination(point);
+        }
+        /// <summary>Stage 3: the round for this part of the day (the kitchen while prepping, the dining room at lunch...).</summary>
+        public void SetPatrol(Transform[] points)
+        {
+            if (points == null || points.Length == 0) return;
+            patrolPoints = points; waypoint = 0; previousWaypoint = -1; visitedAt = null;
+        }
+        public Transform[] PatrolPoints => patrolPoints;
         public Vector3 Eye => transform.position + Vector3.up * eyeHeight + (Living ? Life.EyeShift : Vector3.zero);
         public void Configure(PhaseTwoSession game, Transform[] route, Transform telegraph, Transform weapon, Transform left, Transform right)
         { session = game; patrolPoints = route; warning = telegraph; slipper = weapon; leftLeg = left; rightLeg = right; }

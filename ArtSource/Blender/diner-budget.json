@@ -61,5 +61,68 @@
     "vertices": 1431,
     "triangles": 2806,
     "bones": 19
+  },
+  {
+    "actor": "Salaryman",
+    "lod": 0,
+    "vertices": 6146,
+    "triangles": 12240,
+    "bones": 19
+  },
+  {
+    "actor": "Salaryman",
+    "lod": 1,
+    "vertices": 2961,
+    "triangles": 5870,
+    "bones": 19
+  },
+  {
+    "actor": "Salaryman",
+    "lod": 2,
+    "vertices": 1245,
+    "triangles": 2438,
+    "bones": 19
+  },
+  {
+    "actor": "Student",
+    "lod": 0,
+    "vertices": 5996,
+    "triangles": 11940,
+    "bones": 19
+  },
+  {
+    "actor": "Student",
+    "lod": 1,
+    "vertices": 2891,
+    "triangles": 5730,
+    "bones": 19
+  },
+  {
+    "actor": "Student",
+    "lod": 2,
+    "vertices": 1215,
+    "triangles": 2378,
+    "bones": 19
+  },
+  {
+    "actor": "Grandma",
+    "lod": 0,
+    "vertices": 6692,
+    "triangles": 13320,
+    "bones": 19
+  },
+  {
+    "actor": "Grandma",
+    "lod": 1,
+    "vertices": 3216,
+    "triangles": 6368,
+    "bones": 19
+  },
+  {
+    "actor": "Grandma",
+    "lod": 2,
+    "vertices": 1360,
+    "triangles": 2656,
+    "bones": 19
   }
 ]

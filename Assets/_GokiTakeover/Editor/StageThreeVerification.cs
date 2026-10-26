@@ -31,7 +31,8 @@ namespace GokiTakeover.Editor
 
             // ---- The owner-cook ----
             var session = Object.FindFirstObjectByType<PhaseTwoSession>();
-            var humans = Object.FindObjectsByType<HumanAIController>(FindObjectsSortMode.None);
+            var humans = Enumerable.Range(0, session.HumanCount).Select(session.HumanAt).ToArray();   // the staff (customers have the same body but are not staff)
+            Check(Object.FindObjectsByType<HumanAIController>(FindObjectsInactive.Include, FindObjectsSortMode.None).Length == 3 + StageThreeGenerator.CustomerActors.Length, "人の体は店員3人と客6人");
             var chef = session.Human;
             var mesh = chef.GetComponentsInChildren<SkinnedMeshRenderer>(true).Select(r => r.sharedMesh).FirstOrDefault(m => m && m.name.EndsWith("_Detail0"));
             Check(humans.Length == 3 && session.Family.Count == 2 && chef.Label == "店主" && chef.Slaps && chef.WeaponName == "お玉" && mesh && mesh.name == "Chef_Detail0" && mesh.bindposes.Length == 19 && mesh.vertexCount > 3000,
@@ -80,7 +81,7 @@ namespace GokiTakeover.Editor
             // ---- Food ----
             var foods = commander.Foods;
             var kinds = foods.Select(f => f.GetComponent<FoodValue>().FoodKind).ToArray();
-            Check(foods.Count == 29 && kinds.All(FoodValue.IsDiner) && kinds.Distinct().Count() == 10, "食料は町中華の10種だけ（" + foods.Count + "か所）");
+            Check(foods.Count == 38 && kinds.All(FoodValue.IsDiner) && kinds.Distinct().Count() == 10, "食料は町中華の10種だけ（" + foods.Count + "か所）");
             Check(foods.All(f => f.transform.Find("FoodModel") is Transform m && m.GetComponent<MeshFilter>().sharedMesh.name == FoodModelIntegration.DinerNames[(int)f.GetComponent<FoodValue>().FoodKind - FoodValue.FirstDinerKind]),
                 "食料はそれぞれの種類のBlenderモデル");
             Check(FoodModelIntegration.DinerNames.All(n => AssetDatabase.LoadAssetAtPath<Mesh>(BlenderModelIntegration.Root + "/Meshes/" + n + ".asset") is Mesh m && m.vertexCount > 300 && m.colors.Length == m.vertexCount),
@@ -90,8 +91,8 @@ namespace GokiTakeover.Editor
                 "食料の値（天かす1・餃子2・食べ残し3・チャーシュー4・焼売のせいろ5、ステージ1・2の5種は従来どおり）");
             var floating = foods.Where(f => !Physics.Raycast(f.transform.position + Vector3.up * 0.05f, Vector3.down, out var hit, 0.35f, ~(1 << 2), QueryTriggerInteraction.Ignore)).Select(f => f.name).ToArray();
             Check(floating.Length == 0, "どの食料も床か家具の上に載っている" + (floating.Length > 0 ? ": " + string.Join(", ", floating) : ""));
-            Check(foods.Count(f => floors.FloorOf(f.transform.position) == 2) == 9 && commander.ScoutPoints.All(p => grid.Walkable(p)) && commander.ScoutPoints.Count(p => floors.FloorOf(p) == 2) == 4,
-                "2Fに食料9つ・調査地点4つ（調査地点はすべて床）");
+            Check(foods.Count(f => floors.FloorOf(f.transform.position) == 2) == 11 && commander.ScoutPoints.All(p => grid.Walkable(p)) && commander.ScoutPoints.Count(p => floors.FloorOf(p) == 2) == 4,
+                "2Fに食料11（食べ残しの2つを含む）・調査地点4つ（調査地点はすべて床）");
             var low = foods.Where(f => f.transform.position.y < 0.5f).ToArray();
             Check(low.All(f => grid.Walkable(f.transform.position) || grid.NearestWalkable(f.transform.position, 1.0f, out _)), "床の食料はすべて仲間が取りに行ける");
 
@@ -113,7 +114,8 @@ namespace GokiTakeover.Editor
                 foreach (var l in floors.Links.Where(l => l.humans))
                     links.Add(NavMesh.AddLink(new NavMeshLinkData { startPosition = l.a.ground, endPosition = l.b.ground, width = 0.9f, bidirectional = true, costModifier = 1 }));
                 var walk = new NavMeshPath();
-                bool Reach(Vector3 from, Vector3 to) => NavMesh.SamplePosition(to, out var hit, 1.2f, NavMesh.AllAreas) && NavMesh.CalculatePath(from, hit.position, NavMesh.AllAreas, walk) && walk.status == NavMeshPathStatus.PathComplete;
+                bool Reach(Vector3 from, Vector3 to) => NavMesh.SamplePosition(from, out var start, 1.2f, NavMesh.AllAreas) && NavMesh.SamplePosition(to, out var hit, 1.2f, NavMesh.AllAreas)
+                    && NavMesh.CalculatePath(start.position, hit.position, NavMesh.AllAreas, walk) && walk.status == NavMeshPathStatus.PathComplete;
                 var stairs = floors.Links[0];
                 Check(NavMesh.SamplePosition(stairs.a.ground, out var s0, 0.3f, NavMesh.AllAreas) && NavMesh.SamplePosition(stairs.b.ground, out var s1, 0.3f, NavMesh.AllAreas), "階段の上り口・降り口は人間の通り道");
                 Check(!NavMesh.SamplePosition(new Vector3(21.5f, 3.0f, StageThreeGenerator.StairZ), out _, 0.6f, NavMesh.AllAreas), "階段のスロープは人間の通り道に入らない（人間はつなぎで上り下り）");
@@ -128,6 +130,33 @@ namespace GokiTakeover.Editor
                     Check(stops.Length >= 8 && stops.All(t => Reach(member.transform.position, t.position)) && stops.Any(t => floors.FloorOf(t.position) == 2) && stops.Intersect(route).Count() == 0
                         && Reach(member.transform.position, stage.exitPoint), member.Label + "の巡回 " + stops.Length + "か所（2Fも・すべて歩ける・自分の巡回地点）、裏口へ避難できる");
                 }
+
+                // ---- Step 3: the day and the customers ----
+                var guests = Object.FindFirstObjectByType<DinerCustomers>();
+                var business = Object.FindFirstObjectByType<DinerBusiness>();
+                Check(guests && business, "営業サイクル（仕込み・ランチ・中休み・ディナー・閉店）と客の管理");
+                var pool = guests.Pool;
+                Check(pool.Count == 6 && pool.Select(c => lod0(c.GetComponent<HumanAIController>()).name).Distinct().OrderBy(n => n).SequenceEqual(new[] { "Grandma_Detail0", "Salaryman_Detail0", "Student_Detail0" })
+                    && pool.All(c => lod0(c.GetComponent<HumanAIController>()).bindposes.Length == 19 && !c.GetComponent<HouseholdAttack>() && c.gameObject.layer == 2)
+                    && pool.All(c => !humans.Contains(c.GetComponent<HumanAIController>())), "客6人（サラリーマン・学生・おばあさん 各2、新しいBlenderモデル、攻撃しない、店員の数には入らない）");
+                var seats = guests.Seats;
+                Check(seats.Count == 15 && seats.Count(s => s.upstairs) == 4 && seats.All(s => Reach(guests.Door, s.stand) && Reach(s.stand, guests.Door)),
+                    "客の席15（テーブル8・カウンター3・2Fの座布団4）、どの席も入口から歩いて行ける（2Fは階段で）" + string.Join(" ", seats.Select((s, i) => (s, i)).Where(x => !(Reach(guests.Door, x.s.stand) && Reach(x.s.stand, guests.Door))).Select(x => "×" + x.i + x.s.stand.ToString("F2"))));
+                var tops = guests.Tables;
+                Check(tops.Count == 7 && tops.All(t => t.leftovers && t.leftovers.GetComponent<FoodValue>().FoodKind == FoodValue.Kind.DinerLeftovers && t.plate && !t.plate.activeSelf),
+                    "テーブル7つに食べ残し（客が残すまで隠れる）と料理の皿（食事中だけ表示）");
+                var b = new SerializedObject(business);
+                Check(b.FindProperty("prepFood").arraySize == 2 && b.FindProperty("dinnerFood").arraySize == 1 && b.FindProperty("lights").arraySize >= 6
+                    && b.FindProperty("torch").objectReferenceValue is Light torch && torch.type == LightType.Spot && !torch.enabled && torch.transform.IsChildOf(chef.transform),
+                    "仕込みの餃子2つ・ディナーの焼売・消灯する照明 " + b.FindProperty("lights").arraySize + "・店主の懐中電灯（閉店まで消えている）");
+                foreach (var who in new[] { "chefRounds", "okamiRounds", "baitoRounds" })
+                    foreach (var part in new[] { "prep", "lunch", "rest", "dinner", "closed" })
+                    {
+                        var round = b.FindProperty(who).FindPropertyRelative(part);
+                        bool ok = round.arraySize >= 3;
+                        for (int i = 0; i < round.arraySize && ok; i++) ok = round.GetArrayElementAtIndex(i).objectReferenceValue is Transform t && Reach(chef.transform.position, t.position);
+                        Check(ok, who + "." + part + ": 巡回 " + round.arraySize + "か所（すべて歩ける）");
+                    }
             }
             finally { foreach (var l in links) NavMesh.RemoveLink(l); instance.Remove(); }
         }
