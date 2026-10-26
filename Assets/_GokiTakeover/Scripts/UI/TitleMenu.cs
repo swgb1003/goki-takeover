@@ -14,7 +14,7 @@ namespace GokiTakeover
         [SerializeField] private PolishedPresentation presentation;
         [SerializeField] private CodexViewer codexViewer;
         private Font font;
-        private GUIStyle logo, title, big, text, small, tiny, centred, centredBig, centredTitle;
+        private GUIStyle logo, logoSub, title, big, text, small, tiny, centred, centredBig, centredTitle;
         private float scale = 1, offsetX, offsetY, messageUntil;
         private int focus, codexTab, warmups;
         private Page back = Page.Title;
@@ -142,7 +142,7 @@ namespace GokiTakeover
             if (stages == null || stages.Length == 0) return;
             if (title == null)
             {
-                logo = new GUIStyle(Style(88, FontStyle.Bold)) { alignment = TextAnchor.UpperCenter }; title = Style(28); big = Style(22); text = Style(18); small = Style(14); tiny = Style(12);
+                logo = new GUIStyle(Style(88, FontStyle.Bold)) { alignment = TextAnchor.UpperCenter }; logoSub = new GUIStyle(Style(40, FontStyle.Bold)) { alignment = TextAnchor.UpperCenter }; title = Style(28); big = Style(22); text = Style(18); small = Style(14); tiny = Style(12);
                 centred = new GUIStyle(text) { alignment = TextAnchor.MiddleCenter };
                 centredBig = new GUIStyle(big) { alignment = TextAnchor.MiddleCenter };
                 centredTitle = new GUIStyle(title) { alignment = TextAnchor.MiddleCenter };
@@ -186,11 +186,10 @@ namespace GokiTakeover
         {
             // Logo: two lines, cream and orange with a hard shadow, on a dark band like the reference.
             HudKit.Fill(new Rect(0, 0, 1280, 720), new Color(0, 0, 0, 0.18f));
-            Logo(new Rect(240, 46, 800, 100), "GOKI", HudKit.Cream);
-            Logo(new Rect(240, 134, 800, 100), "TAKEOVER", HudKit.Orange);
-            HudKit.Fill(new Rect(400, 246, 480, 42), new Color(0.03f, 0.03f, 0.03f, 0.88f));
-            HudKit.Fill(new Rect(400, 246, 480, 3), HudKit.Lime);
-            GUI.Label(new Rect(400, 250, 480, 38), "ゴキブリ侵略サバイバル", centredBig);
+            // The title 「ゴキの惑星」 (2026-10-26): the same two-line logo as before, the subtitle drawn the same way.
+            Logo(new Rect(240, 46, 800, 100), "ゴキの", HudKit.Cream);
+            Logo(new Rect(240, 134, 800, 100), "惑星", HudKit.Orange);
+            Logo(new Rect(240, 238, 800, 52), "ゴキブリ侵略サバイバル", HudKit.Lime, logoSub, 3);   // the subtitle in the logo's style, half its size
 
             for (int i = 0; i < MainItems.Length; i++)
             {
@@ -207,10 +206,11 @@ namespace GokiTakeover
             HudKit.Ink(tiny, HudKit.Muted, () => GUI.Label(new Rect(900, 20, 360, 22), "↑↓ 選択   Enter 決定   ver 1.0", tiny));
         }
         // The OS font has no heavy weight: a hard shadow plus a doubled stroke gives the logo its mass.
-        private void Logo(Rect r, string label, Color color)
+        private void Logo(Rect r, string label, Color color) => Logo(r, label, color, logo, 5);
+        private void Logo(Rect r, string label, Color color, GUIStyle style, float shadow)
         {
-            HudKit.Shadowed(r, label, logo, color, 5);
-            GUI.color = color; GUI.Label(new Rect(r.x + 2, r.y, r.width, r.height), label, logo); GUI.Label(new Rect(r.x + 1, r.y + 1, r.width, r.height), label, logo); GUI.color = Color.white;
+            HudKit.Shadowed(r, label, style, color, shadow);
+            GUI.color = color; GUI.Label(new Rect(r.x + 2, r.y, r.width, r.height), label, style); GUI.Label(new Rect(r.x + 1, r.y + 1, r.width, r.height), label, style); GUI.color = Color.white;
         }
         private void Glyph(Rect r, string glyph, string label)
         {
@@ -221,7 +221,7 @@ namespace GokiTakeover
         private void StageSelect()
         {
             HudKit.Fill(new Rect(0, 0, 1280, 720), new Color(0, 0, 0, 0.42f));
-            HudKit.Shadowed(new Rect(34, 14, 400, 50), "GOKI TAKEOVER", title, HudKit.Orange);
+            HudKit.Shadowed(new Rect(34, 14, 400, 50), "ゴキの惑星", title, HudKit.Orange);
             GUI.Label(new Rect(36, 58, 400, 24), "どこに侵略する？", text);
 
             // Colony status (best results so far).

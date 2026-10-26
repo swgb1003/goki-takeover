@@ -93,6 +93,7 @@ namespace GokiTakeover
                 save.unlocked = new[] { "stage01", "stage02", "stage03" }; save.guideDone = true;
                 save.Save();
                 menu.Reload();
+                if (playerRun) yield return Capture("title-720p.png");
                 menu.Open(TitleMenu.Page.StageSelect);
                 menu.Select(2);
                 Check(menu.IsOpen(menu.SelectedStage) && menu.SelectedStage.id == "stage03" && menu.SelectedStage.title == "町中華", "ステージ選択: ステージ2クリア後は「町中華」に出撃できる");
