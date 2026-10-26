@@ -169,7 +169,8 @@ namespace GokiTakeover
             GUI.Label(new Rect(48, 650, 300, 24), AllySummary(), small);
 
             Panel(new Rect(385, 647, 865, 38), Lime);
-            GUI.Label(new Rect(400, 655, 845, 28), "WASD 移動  Shift 走る  E 回収・納品・巣  壁へ進んで登る  Space 降りる  F 仲間を呼ぶ  Tab 軍団  1-5 指示  Esc ポーズ", small);
+            GUI.Label(new Rect(400, 655, 845, 28), Floors ? "WASD 移動  Shift 走る  E 回収・納品・巣  壁へ進んで登る  Space 降りる  F 呼ぶ  Tab 軍団  階段・ダクト 別の階  Esc ポーズ"
+                : "WASD 移動  Shift 走る  E 回収・納品・巣  壁へ進んで登る  Space 降りる  F 仲間を呼ぶ  Tab 軍団  1-5 指示  Esc ポーズ", small);
 
             var interactor = session.Interactor;
             var food = interactor.NearbyFood;
@@ -180,7 +181,8 @@ namespace GokiTakeover
                 bait ? (bait.Identified ? "! 毒餌 — 拾わないで" : "E  食料を回収する") :
                 interactor.AtNest ? "E  巣を開く（繁殖・強化・記録）" :
                 corpse ? (session.Hp < session.MaximumHp ? "E  仲間の死体を食べる（生命力 +" + progress.Stage.corpseHeal + "）" : "仲間の死体  —  生命力は満タン") :
-                cage && cage.Count > 0 && cage.PlayerNear ? "E  虫かごを開けて仲間を助ける（" + cage.Count + "匹）" : ZoneHint();
+                cage && cage.Count > 0 && cage.PlayerNear ? "E  虫かごを開けて仲間を助ける（" + cage.Count + "匹）" :
+                Floors && Floors.Hint(session.Player.position) != null ? Floors.Hint(session.Player.position) : ZoneHint();
             Panel(new Rect(430, 578, 420, 48), bait && bait.Identified ? Orange : Lime);
             GUI.Label(new Rect(450, 588, 385, 35), prompt, text);
 
@@ -220,7 +222,7 @@ namespace GokiTakeover
         {
             bool final = progress.Current >= StageProgress.Phase.FinalDefence;
             Panel(r, final ? Orange : Lime);
-            GUI.Label(new Rect(r.x + 18, r.y + 8, r.width - 30, 22), "STAGE " + StageNumber + "  /  " + progress.Stage.title, small);
+            GUI.Label(new Rect(r.x + 18, r.y + 8, r.width - 30, 22), "STAGE " + StageNumber + "  /  " + progress.Stage.title + (Floors ? "  ・  " + Floors.FloorName(session.Player.position) : ""), small);
             Ink(title, final ? Orange : Cream, () => GUI.Label(new Rect(r.x + 18, r.y + 30, r.width - 30, 38),
                 progress.Current == StageProgress.Phase.Retreat ? "人間が逃げていく！" : final ? "最終防衛を耐えろ" : "部屋を乗っ取れ", title));
             Gauge(new Rect(r.x + 18, r.y + 76, r.width - 36, 30), "◆ 食料確保", colony.TotalCollected + " / " + progress.Stage.foodGoal, progress.FoodGauge);
@@ -573,7 +575,7 @@ namespace GokiTakeover
         private void Pause()
         {
             Fill(new Rect(0, 0, 1280, 720), new Color(0, 0, 0, 0.45f));
-            var r = new Rect(330, 120, 620, 480);
+            var r = new Rect(330, 120, 620, Floors && page == PausePage.Main ? 510 : 480);
             Panel(r, Lime);
             if (page == PausePage.Settings) { SettingsPage(r); return; }
             if (page == PausePage.Codex) { CodexPage(new Rect(130, 70, 1020, 580)); return; }
@@ -587,6 +589,7 @@ namespace GokiTakeover
             if (tutorial && tutorial.Active && Secondary(new Rect(370, 516, 540, 44), "ガイドを閉じる")) { tutorial.Skip(); session.Resume(); }
             else if (tutorial && !tutorial.Active && progress.Stage.tutorial && Secondary(new Rect(370, 516, 540, 44), "ガイドを表示する（今やること・次にやること）")) { tutorial.Show(); session.Resume(); }
             GUI.Label(new Rect(370, 568, 540, 26), "Tab 軍団  1回収 2探索 3防衛 5占拠  F 呼ぶ(長押し 全員)  E(巣) 繁殖", small);
+            if (Floors) GUI.Label(new Rect(370, 594, 540, 26), "階段・ダクトに入ると別の階へ（仲間も通れる）", small);
         }
 
         private void SettingsPage(Rect r)
@@ -634,6 +637,12 @@ namespace GokiTakeover
             "スリッパ  ―  橙の枠から逃げる。台・低い壁も届く", "粘着シート  ―  踏むと大きく減速", "毒餌  ―  青緑の粒。仲間の探索で見破る",
             "殺虫スプレー  ―  パニック中。物陰に隠れる", "燻煙剤  ―  最終防衛。輪の外・高い所へ。巣も燻される"
         };
+        // Stage 3 (町中華): the owner-cook's ladle swats like the slipper; the floors are joined by the stairs and a duct.
+        private static readonly string[] DinerDangers =
+        {
+            "店主のお玉  ―  橙の枠から逃げる。台・低い壁も届く", "粘着シート  ―  踏むと大きく減速", "毒餌  ―  青緑の粒。仲間の探索で見破る",
+            "殺虫スプレー  ―  パニック中。物陰に隠れる", "燻煙剤  ―  最終防衛。輪の外・高い所へ。巣も燻される"
+        };
         // Stage 2: the father keeps the Stage 1 tools; the mother and son bring their own.
         private static readonly string[] HouseDangers =
         {
@@ -665,7 +674,7 @@ namespace GokiTakeover
             var right = new Rect(790, 48, 440, 560);
             Panel(right, Orange);
             GUI.Label(new Rect(816, 64, 300, 30), "危険", big);
-            var dangers = Household ? HouseDangers : Dangers;
+            var dangers = Household ? HouseDangers : Floors ? DinerDangers : Dangers;
             float step = dangers.Length > 6 ? 34 : dangers.Length > 5 ? 38 : 46;
             for (int i = 0; i < dangers.Length; i++)
             {
@@ -673,7 +682,7 @@ namespace GokiTakeover
                 GUI.Label(new Rect(832, 100 + i * step, 390, 26), dangers[i], small);
             }
             GUI.Label(new Rect(816, 350, 300, 30), "操作", big);
-            GUI.Label(new Rect(816, 388, 400, 200), "WASD 移動   Shift 走る   E 回収・納品・巣・死体\n壁へ進み続けて登る   Space 降りる\nTab 軍団モード（時間は止まらない）\n1 回収  2 探索  3 防衛  5 占拠\nF 見える仲間を呼ぶ（長押し 全員）\n軍団: 左クリック 選ぶ・指示  ドラッグ ルート（Enter 決定）\nEsc ポーズ" + (Household ? "\nSpace 連打  虫取り網から脱出" : ""), small);
+            GUI.Label(new Rect(816, 388, 400, 200), "WASD 移動   Shift 走る   E 回収・納品・巣・死体\n壁へ進み続けて登る   Space 降りる\nTab 軍団モード（時間は止まらない）\n1 回収  2 探索  3 防衛  5 占拠\nF 見える仲間を呼ぶ（長押し 全員）\n軍団: 左クリック 選ぶ・指示  ドラッグ ルート（Enter 決定）\nEsc ポーズ" + (Household ? "\nSpace 連打  虫取り網から脱出" : "") + (Floors ? "\n階段・ダクトに入ると別の階へ" : ""), small);
 
             bool resume = GameFlow.ResumeRequested && progress.HasCheckpoint;
             if (resume)
@@ -707,7 +716,7 @@ namespace GokiTakeover
             Fill(new Rect(40, 70, 690, 150), new Color(0.025f, 0.035f, 0.035f, 0.82f));
             Fill(new Rect(40, 70, 690, 5), Orange);
             Shadowed(new Rect(70, 82, 660, 80), "ステージクリア！", giant, Orange);
-            Shadowed(new Rect(76, 170, 640, 34), Household ? "この家は俺たちのものだ！" : "キッチンは俺たちのものだ！", big, Cream);
+            Shadowed(new Rect(76, 170, 640, 34), Household ? "この家は俺たちのものだ！" : Floors ? "この店は俺たちのものだ！" : "キッチンは俺たちのものだ！", big, Cream);
 
             var stats = new Rect(800, 52, 440, 440);
             Panel(stats, Lime);
@@ -726,7 +735,7 @@ namespace GokiTakeover
             if (progress.NewStageUnlocked || progress.NewRewardUnlocked)
             {
                 Ink(small, Orange, () => GUI.Label(new Rect(822, 512, 80, 22), "NEW!", small));
-                if (progress.NewStageUnlocked) GUI.Label(new Rect(822, 534, 410, 28), "新ステージ解放  「" + stage.unlocksTitle + "」" + (stage.unlocks == "stage02" ? "" : "（制作中）"), text);
+                if (progress.NewStageUnlocked) GUI.Label(new Rect(822, 534, 410, 28), "新ステージ解放  「" + stage.unlocksTitle + "」" + (stage.unlocks == "stage02" || stage.unlocks == "stage03" ? "" : "（制作中）"), text);
                 if (progress.NewRewardUnlocked) GUI.Label(new Rect(822, 564, 410, 28), stage.rewardTitle + " ― ステージ選択で切替", small);
             }
             else
@@ -1072,6 +1081,10 @@ namespace GokiTakeover
         }
         // ---- Stage 2 household ----
         private bool Household => session.Family.Count > 0;
+        // Stage 3: the floors (null in Stage 1 and 2).
+        private FloorLinks floors;
+        private bool floorsLooked;
+        private FloorLinks Floors { get { if (!floorsLooked) { floorsLooked = true; floors = FindFirstObjectByType<FloorLinks>(); } return floors; } }
         private string StageNumber => progress.Stage.id.Length > 2 ? progress.Stage.id.Substring(progress.Stage.id.Length - 2).TrimStart('0') : "1";
         /// <summary>The member of the household to report: attacking first, then chasing, searching, else the most alert.</summary>
         private HumanAIController Watcher
@@ -1170,6 +1183,8 @@ namespace GokiTakeover
         {
             view = view ? view : Camera.main;
             if (!view) return;
+            // Stage 3: the other floor lies beside this one, not above it; its markers would show through the walls.
+            if (Floors && Floors.FloorOf(world) != Floors.FloorOf(view.transform.position)) return;
             bool front = ToGui(world, view, out Vector2 p);
             if (clampToEdge)
             {

@@ -1,5 +1,6 @@
 using System;
 using System.IO;
+using System.Linq;
 using UnityEditor;
 using UnityEngine;
 using UnityEngine.Rendering;
@@ -21,6 +22,19 @@ namespace GokiTakeover.Editor
         [Serializable] private class Library { public int version; public Model[] models; }
 
         public sealed class Set { public Mesh[] foods; public Mesh bait; public Material material; }
+
+        // Stage 3 (町中華): ten more foods from Tools/Blender/build_diner_food_models.py -> Source/DinerFood.json,
+        // by FoodValue.Kind from Tenkasu on. Same material.
+        public const string DinerSourcePath = BlenderModelIntegration.Root + "/Source/DinerFood.json";
+        public static readonly string[] DinerNames = { "Food_Tenkasu", "Food_Noodles", "Food_FriedRice", "Food_Gyoza", "Food_Karaage",
+            "Food_SesameBall", "Food_DinerLeftovers", "Food_Flour", "Food_Chashu", "Food_Shumai" };
+        /// <summary>A mesh for every FoodValue.Kind: the first five from Food.json, the diner ten from DinerFood.json.</summary>
+        public static Mesh[] ImportAllKinds(Set first)
+        {
+            var data = JsonUtility.FromJson<Library>(File.ReadAllText(DinerSourcePath));
+            if (data.version != 1 || data.models == null) throw new InvalidDataException("Unknown food mesh schema: " + DinerSourcePath);
+            return first.foods.Concat(DinerNames.Select(n => MeshFor(data, n))).ToArray();
+        }
 
         public static Set Import()
         {

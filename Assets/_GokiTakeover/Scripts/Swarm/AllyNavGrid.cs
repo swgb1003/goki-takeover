@@ -15,6 +15,12 @@ namespace GokiTakeover
         [SerializeField] private float cellSize = 0.25f;
         [SerializeField] private int width, depth;
         [SerializeField] private byte[] cells;
+        // Stage 3 (2026-10-26): floor links (the stairs and the duct between the ground floor and the first floor,
+        // which lie apart on the same plane). Pairs a0, b0, a1, b1...: a path may jump between the two cells of a pair.
+        // None in the older grids: the search is unchanged.
+        [SerializeField] private Vector3[] links = new Vector3[0];
+        public const float LinkCost = 6f;
+        private Dictionary<int, int> linkOf;
         private float[] cost;
         private byte[] baked;   // runtime overlays (placed traps) are undone from this copy
         private int[] parent, heap, stamp, heapIndex;
@@ -28,7 +34,41 @@ namespace GokiTakeover
         public int CellCount => cells == null ? 0 : cells.Length;
 
         public void Bake(Vector3 gridOrigin, float size, int x, int z, byte[] data)
-        { origin = gridOrigin; cellSize = size; width = x; depth = z; cells = data; cost = null; }
+        { origin = gridOrigin; cellSize = size; width = x; depth = z; cells = data; cost = null; links = new Vector3[0]; linkOf = null; }
+        public void SetLinks(Vector3[] pairs) { links = pairs ?? new Vector3[0]; linkOf = null; }
+        public int LinkCount => links == null ? 0 : links.Length / 2;
+        public Vector3 LinkEnd(int link, int end) => links[link * 2 + end];
+
+        /// <summary>
+        /// A path step from near one end of a link to its other end: where to come out. Allies take it by stepping
+        /// through (they vanish into the stairwell or the duct and appear on the other floor).
+        /// </summary>
+        public bool LinkJump(Vector3 from, Vector3 to, out Vector3 exit)
+        {
+            exit = to;
+            if (links == null) return false;
+            for (int i = 0; i + 1 < links.Length; i += 2)
+                for (int e = 0; e < 2; e++)
+                {
+                    Vector3 a = links[i + e], b = links[i + 1 - e];
+                    if (Flat(to - b) < cellSize * 1.5f && Flat(from - a) < 0.6f) { exit = new Vector3(b.x, 0, b.z); return true; }
+                }
+            return false;
+        }
+        private static float Flat(Vector3 v) { v.y = 0; return v.magnitude; }
+        private void PrepareLinks()
+        {
+            if (linkOf != null) return;
+            linkOf = new Dictionary<int, int>();
+            if (links == null) return;
+            for (int i = 0; i + 1 < links.Length; i += 2)
+            {
+                var a = ToCell(links[i]); var b = ToCell(links[i + 1]);
+                if (!InGrid(a.x, a.y) || !InGrid(b.x, b.y)) continue;
+                linkOf[a.y * width + a.x] = b.y * width + b.x;
+                linkOf[b.y * width + b.x] = a.y * width + a.x;
+            }
+        }
 
         /// <summary>Marks open cells inside area as sticky (traps placed during play). Use on a runtime copy.</summary>
         public void AddStickyArea(Bounds area)
@@ -77,6 +117,7 @@ namespace GokiTakeover
             if (!Walkable(start) && !NearestWalkable(start, 1f, out start)) return false;
             if (Get(ToCell(goal).x, ToCell(goal).y) != Open && !NearestWalkable(goal, 1.5f, out goal)) return false;
             Prepare();
+            PrepareLinks();
             var s = ToCell(start); var g = ToCell(goal);
             int startIndex = s.y * width + s.x, goalIndex = g.y * width + g.x;
             search++;
@@ -104,6 +145,18 @@ namespace GokiTakeover
                     float f = g2 + Heuristic(next, goalIndex);
                     if (queued) { score[heapIndex[next]] = f; SiftUp(heapIndex[next]); }
                     else Push(next, f, ref count);
+                }
+                if (linkOf.Count > 0 && linkOf.TryGetValue(current, out int far) && cells[far] != Blocked)
+                {
+                    float g2 = cost[current] + LinkCost;
+                    if (stamp[far] != search || g2 < cost[far])
+                    {
+                        bool queued = stamp[far] == search && heapIndex[far] >= 0;
+                        stamp[far] = search; cost[far] = g2; parent[far] = current;
+                        float f = g2 + Heuristic(far, goalIndex);
+                        if (queued) { score[heapIndex[far]] = f; SiftUp(heapIndex[far]); }
+                        else Push(far, f, ref count);
+                    }
                 }
                 heapIndex[current] = -2;
             }
@@ -149,6 +202,14 @@ namespace GokiTakeover
             search = 0;
         }
         private float Heuristic(int a, int b)
+        {
+            float direct = Octile(a, b);
+            if (linkOf == null || linkOf.Count == 0) return direct;
+            // Through a link the far floor is only LinkCost away: never overestimate (the search stays optimal).
+            foreach (var pair in linkOf) direct = Mathf.Min(direct, Octile(a, pair.Key) + LinkCost + Octile(pair.Value, b));
+            return direct;
+        }
+        private float Octile(int a, int b)
         {
             int dx = Mathf.Abs(a % width - b % width), dz = Mathf.Abs(a / width - b / width);
             return Mathf.Max(dx, dz) + 0.4142f * Mathf.Min(dx, dz);

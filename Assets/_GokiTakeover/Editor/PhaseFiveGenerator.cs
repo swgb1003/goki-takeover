@@ -58,8 +58,8 @@ namespace GokiTakeover.Editor
         [MenuItem("Tools/GOKI TAKEOVER/Rebuild Phase 5 Takeover", priority = 30)]
         public static void RebuildMenu() { if (EditorSceneManager.SaveCurrentModifiedScenesIfUserWantsTo()) { Generate(); EditorSceneManager.OpenScene(TitleScene); } }
         public static void Build() => BuildRelease();
-        // Every scene the game runs: the title, Stage 1 and (2026-10-25) Stage 2.
-        public static string[] GameScenes => new[] { TitleScene, StageScene, StageTwoGenerator.ScenePath };
+        // Every scene the game runs: the title, Stage 1, (2026-10-25) Stage 2 and (2026-10-26) Stage 3.
+        public static string[] GameScenes => new[] { TitleScene, StageScene, StageTwoGenerator.ScenePath, StageThreeGenerator.ScenePath };
         public static void BuildValidation() => PhaseOneBuild.BuildScenes(GameScenes, ValidationBuild, BuildOptions.Development);
         public static void BuildBoth() { BuildValidation(); Build(); }
         public const string ProbeBuild = "Build/GokiTakeover_RenderProbe/GokiTakeover.exe";
@@ -88,6 +88,7 @@ namespace GokiTakeover.Editor
             var stages = Stages();
             GenerateStage(stages[0]);
             StageTwoGenerator.Generate(stages[1]);   // a copy of Stage 1 grown into the family house
+            StageThreeGenerator.Generate();          // a copy of Stage 1 rebuilt as the two-storey diner
             GenerateTitle(Stages());
             AssetDatabase.SaveAssets();
         }

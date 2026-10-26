@@ -172,6 +172,18 @@ namespace GokiTakeover
             SetState(RunState.Playing);
             followCamera.ResetView();
         }
+        /// <summary>Stage 3: the player steps through to the other floor (stairs, duct). It lands on the floor there, facing yaw.</summary>
+        public void TeleportPlayer(Vector3 position, float yaw)
+        {
+            var controller = motor.GetComponent<CharacterController>();
+            controller.enabled = false;
+            Player.SetPositionAndRotation(position, Quaternion.Euler(0, yaw, 0));
+            controller.enabled = true;
+            Physics.SyncTransforms();
+            motor.ResetSurface();
+            motor.ResetSafePosition();
+            followCamera.ResetView();
+        }
         public void RestoreRunSeconds(float seconds) { RunSeconds = Mathf.Max(0, seconds); }
         public void Pause() { if (IsRunning) SetState(RunState.Paused); }
         public void Resume() { if (State == RunState.Paused) SetState(RunState.Playing); }

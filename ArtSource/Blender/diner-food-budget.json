@@ -1,0 +1,92 @@
+{
+  "Food_Tenkasu": {
+    "vertices": 1606,
+    "triangles": 3200,
+    "size_m": [
+      0.327,
+      0.326,
+      0.096
+    ]
+  },
+  "Food_Noodles": {
+    "vertices": 1586,
+    "triangles": 3200,
+    "size_m": [
+      0.393,
+      0.385,
+      0.046
+    ]
+  },
+  "Food_FriedRice": {
+    "vertices": 1604,
+    "triangles": 3200,
+    "size_m": [
+      0.332,
+      0.307,
+      0.108
+    ]
+  },
+  "Food_Gyoza": {
+    "vertices": 1602,
+    "triangles": 3200,
+    "size_m": [
+      0.337,
+      0.181,
+      0.14
+    ]
+  },
+  "Food_Karaage": {
+    "vertices": 1602,
+    "triangles": 3200,
+    "size_m": [
+      0.4,
+      0.232,
+      0.17
+    ]
+  },
+  "Food_SesameBall": {
+    "vertices": 1602,
+    "triangles": 3200,
+    "size_m": [
+      0.241,
+      0.239,
+      0.22
+    ]
+  },
+  "Food_DinerLeftovers": {
+    "vertices": 1602,
+    "triangles": 3200,
+    "size_m": [
+      0.351,
+      0.135,
+      0.135
+    ]
+  },
+  "Food_Flour": {
+    "vertices": 1602,
+    "triangles": 3198,
+    "size_m": [
+      0.464,
+      0.259,
+      0.194
+    ]
+  },
+  "Food_Chashu": {
+    "vertices": 1602,
+    "triangles": 3200,
+    "size_m": [
+      0.324,
+      0.243,
+      0.231
+    ]
+  },
+  "Food_Shumai": {
+    "vertices": 2810,
+    "triangles": 5600,
+    "size_m": [
+      0.72,
+      0.72,
+      0.228
+    ]
+  }
+}

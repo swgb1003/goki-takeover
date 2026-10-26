@@ -13,35 +13,99 @@ MonoBehaviour:
   m_Name: Stage03_Diner
   m_EditorClassIdentifier: 
   id: stage03
-  title: "\u98F2\u98DF\u5E97"
-  subtitle: "\u591C\u306E\u5B9A\u98DF\u5C4B"
-  description: "\u98DF\u3079\u7269\u306E\u5B9D\u5EAB\u3002\u3060\u304C\u3001\u4EBA\u306E\u51FA\u5165\u308A\u3082\u591A\u304F\u5371\u967A\u3002"
-  difficulty: 3
-  residents: 3
-  playable: 0
+  title: "\u753A\u4E2D\u83EF"
+  subtitle: "2\u968E\u5EFA\u3066\u306E\u4E2D\u83EF\u6599\u7406\u5E97\uFF08\u5E97\u4E3B\uFF09"
+  description: "\u6CB9\u3068\u9903\u5B50\u306E\u5302\u3044\u304C\u3059\u308B2\u968E\u5EFA\u3066\u306E\u753A\u4E2D\u83EF\u3002\u968E\u6BB5\u3068\u30C0\u30AF\u30C8\u30672\u968E\u3078\u3002\u5E97\u4E3B\u306E\u304A\u7389\u306B\u6CE8\u610F\u3002"
+  difficulty: 4
+  residents: 1
+  playable: 1
   unlocks: 
   unlocksTitle: 
   reward: 
   rewardTitle: 
-  sceneName: 
-  foodGoal: 30
-  fearGoal: 120
-  zones: []
-  holdSeconds: 12
-  holdPresence: 2
-  residentClearRate: 0.35
-  fearPerZone: 10
-  finalDefenceSeconds: 60
-  foggerInterval: 13
-  foggerWarning: 3.5
+  sceneName: Phase5_Stage03_Diner
+  foodGoal: 70
+  fearGoal: 240
+  zones:
+  - name: "\u4F5C\u696D\u53F0\u306E\u4E0B"
+    centre: {x: -2, y: 0, z: -0.5}
+    radius: 1.4
+  - name: "\u30B3\u30F3\u30ED\u306E\u4E0B"
+    centre: {x: -3.9, y: 0, z: 5}
+    radius: 1
+  - name: "\u51B7\u8535\u5EAB\u306E\u524D"
+    centre: {x: -4.6, y: 0, z: -3}
+    radius: 1.2
+  - name: "\u30AB\u30A6\u30F3\u30BF\u30FC\u306E\u8DB3\u5143"
+    centre: {x: 12.6, y: 0, z: 2.3}
+    radius: 1.3
+  - name: "\u30C6\u30FC\u30D6\u30EB\u5E2D\u306E\u4E0B"
+    centre: {x: 15.5, y: 0, z: -3.8}
+    radius: 1.2
+  - name: "\u30EC\u30B8\u306E\u524D"
+    centre: {x: 24, y: 0, z: -3}
+    radius: 1.3
+  - name: "\u6D41\u3057\u53F0\u306E\u524D"
+    centre: {x: -2.5, y: 0, z: 12.6}
+    radius: 1.4
+  - name: "\u7C73\u888B\u306E\u305D\u3070"
+    centre: {x: 8.6, y: 0, z: 12.4}
+    radius: 1.3
+  - name: "\u5EA7\u5353\u306E\u4E0B"
+    centre: {x: 49, y: 0, z: -2}
+    radius: 1.2
+  - name: "\u30ED\u30C3\u30AB\u30FC\u306E\u524D"
+    centre: {x: 52.6, y: 0, z: 13.4}
+    radius: 1.3
+  holdSeconds: 18
+  holdPresence: 3
+  holdBonusPerRoach: 0.5
+  holdBonusMax: 3
+  residentClearRate: 0.55
+  fearPerZone: 8
+  startAllies: 0
+  allyCorpseSeconds: 20
+  corpseHeal: 1
+  slipperReach: 3.6
+  tutorial: 0
+  residentHuntsAllies: 1
+  allyReactionSeconds: 0.85
+  allyStunSeconds: 1.5
+  allyWoundHealSeconds: 35
+  allyAlarmRadius: 2
+  allyCollectReactionScale: 1.6
+  nestFumigations:
+  - 8
+  - 30
+  - 55
+  - 80
+  nestFumigationWarning: 4.5
+  nestFumigationSeconds: 15
+  nestSmokeDamageEvery: 1.1
+  humanDetectionScale: 1.05
+  humanSpeedScale: 1.1
+  heatArea:
+    serializedVersion: 2
+    x: -7
+    y: -6
+    width: 70
+    height: 22.5
+  familyLeavesForDefence: 1
+  calmSeconds: 30
+  calmBelowFear: 25
+  fearDecayPerSecond: 1
+  allyFearCap: 1
+  finalDefenceSeconds: 100
+  foggerInterval: 10
+  foggerWarning: 3.2
   foggerDuration: 9
   foggerRadius: 3
   smokeHeight: 2.4
-  maxFoggers: 2
-  exitPoint: {x: 6.2, y: 0, z: -3.6}
-  parSeconds: 720
-  fewDiscoveries: 3
-  someDiscoveries: 8
+  maxFoggers: 3
+  exitPoint: {x: -6.2, y: 0, z: 13.3}
+  parSeconds: 1500
+  fewDiscoveries: 5
+  someDiscoveries: 12
   manyAllies: 8
   someAllies: 5
   ratingA: 6

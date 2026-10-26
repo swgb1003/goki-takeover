@@ -9,7 +9,7 @@ using UnityEngine;
 namespace GokiTakeover.Editor
 {
     [InitializeOnLoad]
-    public static class PhaseFiveVerification
+    public static partial class PhaseFiveVerification
     {
         public const string Output = "docs/Validation/Phase5";
         private const string Active = "GokiTakeover.Phase5.Verify";
@@ -33,8 +33,13 @@ namespace GokiTakeover.Editor
                 Check(assets == AssetDatabase.FindAssets("", new[] { GeneratedAssets.Root }).Length, "再生成でアセットが増えない");
 
                 var stages = PhaseFiveGenerator.StageAssets.Select(AssetDatabase.LoadAssetAtPath<StageDefinition>).ToArray();
-                Check(stages.All(s => s) && stages[0].playable && stages[0].zones.Length == 4 && stages[1].playable && stages[1].zones.Length == 8 && !stages[2].playable && stages[0].unlocks == stages[1].id
-                    && stages[1].unlocks == stages[2].id, "ステージ定義3つ（1・2は遊べる・縄張り4区域と8区域、3は制作中、1のクリアで2・2のクリアで3を解放）");
+                Check(stages.All(s => s) && stages[0].playable && stages[0].zones.Length == 4 && stages[1].playable && stages[1].zones.Length == 8 && stages[2].playable && stages[2].zones.Length == 10
+                    && stages[0].unlocks == stages[1].id && stages[1].unlocks == stages[2].id && stages[1].unlocksTitle == stages[2].title,
+                    "ステージ定義3つ（すべて遊べる・縄張り4・8・10区域、1のクリアで2・2のクリアで3「" + stages[2].title + "」を解放）");
+                Check(stages[2].foodGoal > stages[1].foodGoal && stages[2].fearGoal > stages[1].fearGoal && stages[2].holdSeconds > stages[1].holdSeconds && stages[2].zones.Length > stages[1].zones.Length
+                    && stages[2].finalDefenceSeconds > stages[1].finalDefenceSeconds && stages[2].nestFumigations.Length > stages[1].nestFumigations.Length && stages[2].humanDetectionScale < stages[1].humanDetectionScale
+                    && stages[2].difficulty > stages[1].difficulty && !stages[2].tutorial,
+                    "ステージ3はステージ2より難しい（食料 " + stages[2].foodGoal + "・恐怖 " + stages[2].fearGoal + "・区域 " + stages[2].zones.Length + "×" + stages[2].holdSeconds + "秒・防衛 " + stages[2].finalDefenceSeconds + "秒・発見までの時間 x" + stages[2].humanDetectionScale + "）");
                 Check(stages[1].foodGoal > stages[0].foodGoal && stages[1].fearGoal > stages[0].fearGoal && stages[1].holdPresence > stages[0].holdPresence && stages[1].holdSeconds > stages[0].holdSeconds
                     && stages[1].finalDefenceSeconds > stages[0].finalDefenceSeconds && stages[1].maxFoggers > stages[0].maxFoggers && stages[1].nestFumigations.Length > stages[0].nestFumigations.Length
                     && stages[1].humanDetectionScale < stages[0].humanDetectionScale && stages[1].difficulty > stages[0].difficulty && !stages[1].tutorial,
@@ -98,6 +103,7 @@ namespace GokiTakeover.Editor
                     && route.Any(t => t.position.x < -4) && route.Any(t => t.position.x > 4), "人間の巡回地点は部屋全体に " + route.Length + "か所（すべて歩いて行ける）");
 
                 VerifyStageTwo(stages[1]);
+                VerifyStageThree(stages[2]);
 
                 EditorSceneManager.OpenScene(PhaseFiveGenerator.TitleScene);
                 Check(UnityEngine.Object.FindObjectsByType<Camera>(FindObjectsSortMode.None).Length == 1, "タイトル: 描画カメラ1台");
@@ -258,6 +264,7 @@ namespace GokiTakeover.Editor
 
         public static void VerifyPlayMode() => Play(PhaseFiveGenerator.TitleScene, "phase5", Output);
         public static void VerifyStageTwoPlay() => Play(StageTwoGenerator.ScenePath, "stage2", Output + "/stage2");
+        public static void VerifyStageThreePlay() => Play(StageThreeGenerator.ScenePath, "stage3", Output + "/stage3");
         // Shared scripts changed again: rerun the earlier suites on their own scenes.
         public static void VerifyPhaseFourRegression() => Play(PhaseFourGenerator.ScenePath, "phase4", Output + "/regression-phase4");
         public static void VerifyPhaseThreeRegression() => Play(PhaseThreeGenerator.ScenePath, "phase3", Output + "/regression-phase3");
@@ -297,6 +304,7 @@ namespace GokiTakeover.Editor
                 case "phase3": { var r = new GameObject("Phase3_Regression").AddComponent<PhaseThreeScenarioTest>(); r.OutputFolder = output; r.Completed += done; break; }
                 case "phase4": { var r = new GameObject("Phase4_Regression").AddComponent<PhaseFourScenarioTest>(); r.OutputFolder = output; r.Completed += done; break; }
                 case "stage2": { var r = new GameObject("Stage2_Verification").AddComponent<StageTwoScenarioTest>(); r.OutputFolder = output; r.Completed += done; break; }
+                case "stage3": { var r = new GameObject("Stage3_Verification").AddComponent<StageThreeScenarioTest>(); r.OutputFolder = output; r.Completed += done; break; }
                 default: { var r = new GameObject("Phase5_Verification").AddComponent<PhaseFiveScenarioTest>(); r.OutputFolder = output; r.Completed += done; break; }
             }
         }

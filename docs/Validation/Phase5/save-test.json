@@ -9,7 +9,7 @@
             "stage": "stage01",
             "clears": 1,
             "bestRating": "B",
-            "bestSeconds": 52.912696838378909,
+            "bestSeconds": 52.82841873168945,
             "bestFood": 30
         }
     ],
@@ -22,7 +22,7 @@
     "checkpoint": {
         "valid": true,
         "stage": "stage01",
-        "savedAt": "2026/10/26 08:01",
+        "savedAt": "2026/10/26 12:43",
         "food": 3,
         "totalCollected": 0,
         "nestLevel": 1,
@@ -42,9 +42,9 @@
             12.0,
             0.0
         ],
-        "fear": 20.115612030029298,
-        "fearGained": 20.431976318359376,
-        "seconds": 10.831291198730469,
+        "fear": 20.12149429321289,
+        "fearGained": 20.431739807128908,
+        "seconds": 10.849461555480957,
         "discoveries": 2,
         "successors": 0
     }

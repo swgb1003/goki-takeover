@@ -270,6 +270,13 @@ namespace GokiTakeover
                 if (!hasPath) { PathFailed(); Brake(dt); return false; }
             }
             while (pathIndex < path.Count - 1 && (path[pathIndex] - flat).sqrMagnitude < 0.04f) pathIndex++;
+            // Stage 3: the next point is on the other floor (stairs, duct): step through and come out there.
+            if (commander.Grid.LinkCount > 0 && commander.Grid.LinkJump(flat, path[Mathf.Min(pathIndex, path.Count - 1)], out Vector3 exit))
+            {
+                transform.position = exit;
+                flat = exit;
+                if (pathIndex < path.Count - 1) pathIndex++;
+            }
             Vector3 toward = path[Mathf.Min(pathIndex, path.Count - 1)] - flat;
             if (commander.Grid.IsSticky(flat)) speed *= commander.Session.Settings.stickySpeed;
             if (Carried) speed *= commander.Session.CarryingSpeed;

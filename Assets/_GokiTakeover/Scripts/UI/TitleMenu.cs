@@ -258,7 +258,8 @@ namespace GokiTakeover
                 GUI.Label(new Rect(404, 286, 820, 26), "目的  食料 " + stage.foodGoal + "・縄張り " + stage.zones.Length + "区域・人間の恐怖 を100%に  →  最終防衛 " + stage.finalDefenceSeconds.ToString("F0") + "秒", small);
                 var record = Save.Record(stage.id);
                 GUI.Label(new Rect(404, 314, 820, 26), record != null ? "クリア " + record.clears + "回   ベスト評価 " + record.bestRating + "   ベストタイム " + Clock(record.bestSeconds) : "まだクリアしていません", small);
-                HudKit.Ink(small, HudKit.Orange, () => GUI.Label(new Rect(404, 380, 820, 26), stage.residents > 1 ? "危険  父のスリッパ・罠 ・ 母の掃除機 ・ 息子の虫取り網 ・ 飼い猫 ・ 燻煙剤（最終防衛）" : "危険  スリッパ ・ 粘着シート ・ 毒餌 ・ 殺虫スプレー ・ 燻煙剤（最終防衛）", small));
+                HudKit.Ink(small, HudKit.Orange, () => GUI.Label(new Rect(404, 380, 820, 26), stage.id == "stage03" ? "危険  店主のお玉 ・ 粘着シート ・ 毒餌 ・ 殺虫スプレー ・ 燻煙剤（最終防衛）   2階建て" :
+                    stage.residents > 1 ? "危険  父のスリッパ・罠 ・ 母の掃除機 ・ 息子の虫取り網 ・ 飼い猫 ・ 燻煙剤（最終防衛）" : "危険  スリッパ ・ 粘着シート ・ 毒餌 ・ 殺虫スプレー ・ 燻煙剤（最終防衛）", small));
                 if (Save.HasCheckpoint(stage.id))
                     HudKit.Ink(small, HudKit.Lime, () => GUI.Label(new Rect(404, 342, 820, 26), "記録あり  " + Save.checkpoint.savedAt + "（仲間 " + Save.checkpoint.allies + "匹・食料 " + Save.checkpoint.food + "）", small));
             }

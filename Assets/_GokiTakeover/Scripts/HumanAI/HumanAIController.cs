@@ -26,6 +26,16 @@ namespace GokiTakeover
         Vector3 EyeShift { get; }
     }
 
+    /// <summary>
+    /// Stage 3 floors (FloorLinks): the stairs are NavMesh links between the two floors. While the agent stands on one,
+    /// this walks the person through (up the steps, out of sight, down onto the other floor) instead of the agent
+    /// sliding straight across. Returns true while it is still moving them.
+    /// </summary>
+    public interface IFloorTraveller
+    {
+        bool Traverse(HumanAIController human, float dt);
+    }
+
     [RequireComponent(typeof(NavMeshAgent))]
     public sealed class HumanAIController : MonoBehaviour
     {
@@ -102,6 +112,9 @@ namespace GokiTakeover
         public NavMeshAgent Agent => agent;
         // Null: no daily life (every scene before Stage 2's family); the sight and the routine are unchanged.
         public IDailyLife Life { get; set; }
+        // Null: one floor (every scene before Stage 3); the agent is never on a link.
+        public IFloorTraveller Floors { get; set; }
+        public bool OnStairs => Floors != null && agent && agent.isOnOffMeshLink;
         private bool Living => Life != null && State == HumanState.Routine && Life.Leads;
         public float SightAngle => Settings.sightAngle * (Living ? Life.SightAngleScale : 1);
         public float SightRange => Settings.sightDistance * (Living ? Life.SightRangeScale : 1);
@@ -171,6 +184,7 @@ namespace GokiTakeover
         public void Tick(float dt)
         {
             if (!session.IsRunning || Suspended || !agent.isOnNavMesh || dt <= 0) return;
+            if (Floors != null && agent.isOnOffMeshLink && State != HumanState.Attack && Floors.Traverse(this, dt)) return;
             sensorClock += dt;
             if (sensorClock >= 0.1f)
             {

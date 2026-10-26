@@ -1,0 +1,23 @@
+[
+  {
+    "actor": "Chef",
+    "lod": 0,
+    "vertices": 8864,
+    "triangles": 17580,
+    "bones": 19
+  },
+  {
+    "actor": "Chef",
+    "lod": 1,
+    "vertices": 4269,
+    "triangles": 8390,
+    "bones": 19
+  },
+  {
+    "actor": "Chef",
+    "lod": 2,
+    "vertices": 1814,
+    "triangles": 3480,
+    "bones": 19
+  }
+]
