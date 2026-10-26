@@ -1,0 +1,82 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<title>タイトル画面 案2b</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=BIZ+UDPGothic:wght@400;700&amp;family=BIZ+UDGothic:wght@400;700&amp;family=Dela+Gothic+One&amp;family=Yusei+Magic&amp;display=swap" rel="stylesheet">
+<style>
+body{margin:0}
+a{color:#2A211A}a:hover{color:#000000}
+</style>
+</helmet>
+<div style="width: 1280px; height: 720px; position: relative; overflow: hidden; font-family: 'BIZ UDPGothic', 'Yu Gothic', sans-serif; color: #2A211A; background: #1E1610">
+  <img src="/_blob/3661899b27224426f605141a2c680113" alt="ゴキブリの目線で見上げた台所。床にゴキブリがいる" style="position: absolute; left: 31px; top: -44px; width: 1280px; height: 720px; object-fit: cover">
+
+  <!-- ロゴ（今の形のまま。影だけ場面の光に合わせてやわらげる） -->
+  <div style="position: absolute; left: 340px; top: 40px; width: 600px; display: flex; flex-direction: column; align-items: center; filter: drop-shadow(0 8px 10px rgba(20,10,0,{{shadow}}))">
+    <span style="font-family: 'Dela Gothic One', sans-serif; font-size: 96px; line-height: 1.02; color: #E6DCC2; -webkit-text-stroke: 3px #2A211A; text-shadow: 5px 6px 0 #2A211A">ゴキの</span>
+    <span style="font-family: 'Dela Gothic One', sans-serif; font-size: 104px; line-height: 1.02; color: #DD7D2C; -webkit-text-stroke: 3px #2A211A; text-shadow: 5px 6px 0 #2A211A">惑星</span>
+    <span style="margin-top: 8px; padding: 6px 26px; transform: rotate(-1.5deg); background: rgba(214,196,140,0.84); clip-path: polygon(2% 0, 0 30%, 1.5% 64%, 0 100%, 98% 100%, 100% 68%, 98.5% 32%, 100% 0); font-family: 'Dela Gothic One', sans-serif; font-size: 30px; color: #586E0E; letter-spacing: 0.02em">ゴキブリ侵略サバイバル</span>
+  </div>
+
+  <!-- 操作のヒント（HUDの下の行と同じ作り） -->
+  <div style="position: absolute; right: 36px; top: 24px; display: flex; align-items: center; gap: 14px; font-size: 13px; font-weight: 700; color: #E2D6BE; text-shadow: 0 1px 3px rgba(0,0,0,0.9)">
+    <span style="display: flex; align-items: center; gap: 6px"><span style="padding: 1px 6px; border-radius: 4px; background: #D8CCB2; color: #2A211A; text-shadow: none; border-bottom: 2px solid #7C6E5C">↑↓</span>えらぶ</span>
+    <span style="display: flex; align-items: center; gap: 6px"><span style="padding: 1px 6px; border-radius: 4px; background: #D8CCB2; color: #2A211A; text-shadow: none; border-bottom: 2px solid #7C6E5C">Enter</span>決定</span>
+  </div>
+
+  <!-- メニュー：右の縁からはみ出す段ボールの切れ端に貼る -->
+  <div style="position: absolute; right: -30px; top: 262px; width: 360px; height: 480px; transform: rotate(-2deg); filter: drop-shadow(0 6px 10px rgba(20,10,0,{{shadow}}))">
+    <div style="position: absolute; inset: 0; background-color: #9C7A4C; background-image: linear-gradient(165deg, rgba(255,230,190,0.16) 0%, rgba(255,230,190,0) 40%, rgba(40,20,0,0.24) 100%), repeating-linear-gradient(to right, rgba(60,38,12,0.12) 0, rgba(60,38,12,0.12) 2px, transparent 2px, transparent 9px); clip-path: polygon(3% 2%, 34% 0, 70% 3%, 100% 0, 100% 100%, 0 100%, 2% 52%)"></div>
+  </div>
+
+  <!-- いちばん大事な決定：丸いシール（段ボールに貼ってある） -->
+  <a href="StageSelect.dc.html" style="position: absolute; left: 1006px; top: 290px; width: 186px; height: 186px; border-radius: 50%; background-color: #9DB23A; background-image: linear-gradient(160deg, rgba(255,250,220,0.22) 0%, rgba(255,250,220,0) 45%, rgba(30,40,0,0.18) 100%); border: 6px solid #D6CBB0; box-sizing: border-box; box-shadow: 0 4px 6px rgba(20,10,0,0.5); transform: rotate(-7deg); display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 6px; text-decoration: none; color: #1A1F06">
+    <span style="font-family: 'Dela Gothic One', sans-serif; font-size: 40px; line-height: 1">はじめる</span>
+    <span style="font-family: 'Yusei Magic', sans-serif; font-size: 16px">ステージをえらぶ</span>
+  </a>
+  <!-- 選択中の印：赤ペンの丸とゴキブリ -->
+  <svg width="236" height="236" viewBox="0 0 236 236" style="position: absolute; left: 982px; top: 266px; pointer-events: none" aria-hidden="true"><path d="M70 14 C140 0 214 30 226 104 C236 170 190 226 116 228 C50 230 6 184 8 118 C10 66 40 30 84 16" fill="none" stroke="#B5362A" stroke-width="4" stroke-linecap="round"></path></svg>
+  <svg width="70" height="56" viewBox="0 0 70 56" style="position: absolute; left: 920px; top: 354px; transform: rotate(8deg); filter: drop-shadow(0 3px 3px rgba(20,10,0,0.5))" aria-hidden="true">
+    <path d="M52 22 C62 14 66 8 69 2 M52 32 C62 40 66 46 69 54" fill="none" stroke="#3A2416" stroke-width="2" stroke-linecap="round"></path>
+    <path d="M24 16 L16 4 M34 15 L32 2 M24 40 L16 52 M34 41 L32 54 M42 18 L48 8 M42 38 L48 48" fill="none" stroke="#3A2416" stroke-width="2.4" stroke-linecap="round"></path>
+    <ellipse cx="30" cy="28" rx="22" ry="12" fill="#6A3A20" stroke="#2A160B" stroke-width="2"></ellipse>
+    <ellipse cx="51" cy="28" rx="6" ry="7" fill="#4A2814" stroke="#2A160B" stroke-width="2"></ellipse>
+    <path d="M10 28 H48" stroke="#3E2010" stroke-width="1.6"></path>
+  </svg>
+
+  <!-- ほかの項目：段ボールに貼った紙テープ（向こうが少し透ける） -->
+  <span aria-disabled="true" style="position: absolute; left: 990px; top: 502px; width: 224px; height: 40px; transform: rotate(1.5deg); background: rgba(214,196,140,0.5); clip-path: polygon(3% 0, 0 50%, 3% 100%, 97% 100%, 100% 50%, 97% 0); display: flex; align-items: center; justify-content: center; gap: 8px; font-size: 18px; font-weight: 700; color: #2E241A">つづきから<span style="font-size: 12px; font-weight: 700">（記録なし）</span></span>
+  <a href="#" style="position: absolute; left: 980px; top: 552px; width: 150px; height: 40px; transform: rotate(-2deg); background: rgba(214,196,140,0.88); clip-path: polygon(3% 0, 0 50%, 3% 100%, 97% 100%, 100% 50%, 97% 0); display: flex; align-items: center; justify-content: center; font-size: 18px; font-weight: 700; text-decoration: none">設定</a>
+  <a href="#" style="position: absolute; left: 1080px; top: 600px; width: 150px; height: 40px; transform: rotate(1deg); background: rgba(214,196,140,0.88); clip-path: polygon(3% 0, 0 50%, 3% 100%, 97% 100%, 100% 50%, 97% 0); display: flex; align-items: center; justify-content: center; font-size: 18px; font-weight: 700; text-decoration: none">図鑑</a>
+  <a href="#" style="position: absolute; left: 1000px; top: 652px; width: 112px; height: 36px; transform: rotate(-1deg); background: rgba(214,196,140,0.72); clip-path: polygon(4% 0, 0 50%, 4% 100%, 96% 100%, 100% 50%, 96% 0); display: flex; align-items: center; justify-content: center; font-size: 15px; font-weight: 700; color: #2E241A; text-decoration: none">終了</a>
+
+  <span style="position: absolute; left: 30px; top: 22px; font-family: 'BIZ UDGothic', monospace; font-size: 12px; color: #E2D6BE; text-shadow: 0 1px 3px rgba(0,0,0,0.9)">ver 1.0</span>
+
+  <!-- 画面全体の仕上げ：HUDと同じ光・粒子・周辺減光 -->
+  <sc-if value="{{grade}}" hint-placeholder-val="{{ true }}">
+    <div style="position: absolute; inset: 0; pointer-events: none; background: #F0D3A4; mix-blend-mode: multiply; opacity: 0.16"></div>
+    <div style="position: absolute; inset: 0; pointer-events: none; background: radial-gradient(ellipse 75% 70% at 52% 46%, rgba(20,10,0,0) 55%, rgba(20,10,0,0.42) 100%)"></div>
+    <svg width="1280" height="720" style="position: absolute; left: 0; top: 0; pointer-events: none; mix-blend-mode: overlay; opacity: 0.28" aria-hidden="true"><filter id="grain"><feTurbulence type="fractalNoise" baseFrequency="0.85" numOctaves="2" stitchTiles="stitch"></feTurbulence><feColorMatrix type="saturate" values="0"></feColorMatrix></filter><rect width="1280" height="720" filter="url(#grain)"></rect></svg>
+  </sc-if>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"paper":{"editor":"color","default":"#DCCFB4","options":["#DCCFB4","#E8DEC8","#F4EFE4"]},"shadow":{"editor":"range","default":0.55,"min":0.2,"max":0.8,"step":0.05},"grade":{"editor":"boolean","default":true},"$preview":{"width":1280,"height":720}}'>
+class Component extends DCLogic {
+  renderVals() {
+    return {
+      paper: this.props.paper ?? '#DCCFB4',
+      shadow: this.props.shadow ?? 0.55,
+      grade: this.props.grade ?? true
+    };
+  }
+}
+</script>
+</body>
+</html>

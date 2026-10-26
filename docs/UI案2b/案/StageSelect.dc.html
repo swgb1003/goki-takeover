@@ -1,0 +1,97 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<title>ステージ選択 案2b</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=BIZ+UDPGothic:wght@400;700&amp;family=BIZ+UDGothic:wght@400;700&amp;family=Dela+Gothic+One&amp;family=Yusei+Magic&amp;display=swap" rel="stylesheet">
+<style>
+body{margin:0}
+a{color:#E2D6BE}a:hover{color:#FFFFFF}
+</style>
+</helmet>
+<div style="width: 1280px; height: 720px; position: relative; overflow: hidden; font-family: 'BIZ UDPGothic', 'Yu Gothic', sans-serif; color: #2A211A; background-color: #8E6C40; background-image: radial-gradient(ellipse 70% 60% at 50% 30%, rgba(255,220,160,0.22) 0%, rgba(255,220,160,0) 70%), linear-gradient(180deg, rgba(255,230,190,0.08) 0%, rgba(40,20,0,0.3) 100%), repeating-linear-gradient(to right, rgba(60,38,12,0.12) 0, rgba(60,38,12,0.12) 2px, transparent 2px, transparent 9px)">
+
+  <!-- 見出し：段ボールに直接書いた黒マジック -->
+  <div style="position: absolute; left: 48px; top: 26px; display: flex; flex-direction: column; gap: 0">
+    <span style="font-family: 'Dela Gothic One', sans-serif; font-size: 24px; color: #E6DCC2; text-shadow: 2px 3px 0 #2A211A">ゴキの<span style="color: #DD7D2C">惑星</span></span>
+    <span style="font-family: 'Yusei Magic', sans-serif; font-size: 40px; color: #17110C; opacity: 0.92">どこに侵略する？</span>
+  </div>
+
+  <!-- 巣の状況：上の縁からぶら下がるレシート -->
+  <div style="position: absolute; right: 44px; top: -12px; width: 236px; transform: rotate(2deg); transform-origin: 50% 0; filter: drop-shadow(0 6px 8px rgba(20,10,0,{{shadow}}))">
+    <div style="box-sizing: border-box; padding: 24px 16px 20px; background-color: {{paper}}; background-image: linear-gradient(170deg, rgba(255,248,230,0.22) 0%, rgba(255,248,230,0) 40%, rgba(60,35,10,0.16) 100%); clip-path: polygon(0 0, 100% 0, 100% calc(100% - 6px), 95% 100%, 90% calc(100% - 6px), 85% 100%, 80% calc(100% - 6px), 75% 100%, 70% calc(100% - 6px), 65% 100%, 60% calc(100% - 6px), 55% 100%, 50% calc(100% - 6px), 45% 100%, 40% calc(100% - 6px), 35% 100%, 30% calc(100% - 6px), 25% 100%, 20% calc(100% - 6px), 15% 100%, 10% calc(100% - 6px), 5% 100%, 0 calc(100% - 6px)); font-family: 'BIZ UDGothic', monospace; font-size: 14px; display: flex; flex-direction: column; gap: 4px">
+      <span style="color: #4E4134">― 巣の記録 ―</span>
+      <span style="display: flex; justify-content: space-between"><span>クリア</span><span><b style="font-size: 17px">0</b>/3</span></span>
+      <span style="display: flex; justify-content: space-between"><span>ベスト評価</span><span>―</span></span>
+      <span style="display: flex; justify-content: space-between"><span>最多の食料</span><span>―</span></span>
+    </div>
+  </div>
+
+  <!-- ステージの写真（画鋲で留める。影はやわらかく下へ） -->
+  <a href="#" style="position: absolute; left: 60px; top: 170px; width: 268px; transform: rotate(-4deg); background-color: #E2D8C2; background-image: linear-gradient(165deg, rgba(255,250,235,0.2) 0%, rgba(255,250,235,0) 45%, rgba(60,35,10,0.14) 100%); padding: 10px 10px 0; box-sizing: border-box; box-shadow: 0 6px 10px rgba(20,10,0,{{shadow}}); text-decoration: none; color: #2A211A">
+    <img src="/_blob/b6de4af49d419fdf8d8ea5063ee3f246" alt="ステージ1 ワンルームのキッチン" style="display: block; width: 248px; height: 160px; object-fit: cover; object-position: 15% 90%; filter: sepia(0.15) brightness(0.95)">
+    <span style="display: flex; flex-direction: column; gap: 2px; padding: 8px 2px 12px"><span style="font-family: 'Yusei Magic', sans-serif; font-size: 20px">1 ワンルームのキッチン</span><span style="font-size: 14px; color: #4E4134">一人暮らしの部屋　<span style="color: #B5362A">★</span>☆☆☆☆</span></span>
+    <span style="position: absolute; left: 124px; top: -6px; width: 16px; height: 16px; border-radius: 50%; background: radial-gradient(circle at 35% 30%, #6E9CC4 0%, #2A5F8E 60%, #1C4266 100%); box-shadow: 0 2px 3px rgba(20,10,0,0.6)"></span>
+  </a>
+  <a href="#" style="position: absolute; left: 346px; top: 214px; width: 258px; transform: rotate(3deg); background-color: #E2D8C2; background-image: linear-gradient(165deg, rgba(255,250,235,0.2) 0%, rgba(255,250,235,0) 45%, rgba(60,35,10,0.14) 100%); padding: 10px 10px 0; box-sizing: border-box; box-shadow: 0 6px 10px rgba(20,10,0,{{shadow}}); text-decoration: none; color: #2A211A">
+    <span style="display: flex; width: 238px; height: 150px; background: #4E4032; align-items: center; justify-content: center; color: #CDBFA8; font-size: 13px">[ステージ2の写真]</span>
+    <span style="display: flex; flex-direction: column; gap: 2px; padding: 8px 2px 12px"><span style="font-family: 'Yusei Magic', sans-serif; font-size: 20px">2 一軒家</span><span style="font-size: 14px; color: #4E4134">家族と猫の家　<span style="color: #B5362A">★★★</span>☆☆</span></span>
+    <span style="position: absolute; left: 118px; top: -6px; width: 16px; height: 16px; border-radius: 50%; background: radial-gradient(circle at 35% 30%, #E8806E 0%, #B5362A 60%, #7E2219 100%); box-shadow: 0 2px 3px rgba(20,10,0,0.6)"></span>
+  </a>
+  <a href="Briefing.dc.html" style="position: absolute; left: 630px; top: 150px; width: 330px; transform: rotate(-1.5deg); background-color: #E2D8C2; background-image: linear-gradient(165deg, rgba(255,250,235,0.22) 0%, rgba(255,250,235,0) 45%, rgba(60,35,10,0.14) 100%); padding: 12px 12px 0; box-sizing: border-box; box-shadow: 0 9px 14px rgba(20,10,0,{{shadow}}); text-decoration: none; color: #2A211A">
+    <img src="/_blob/35d957bcdd66e4d03549bad341796d24" alt="ステージ3 町中華" style="display: block; width: 306px; height: 206px; object-fit: cover; filter: sepia(0.12) brightness(0.96)">
+    <span style="display: flex; flex-direction: column; gap: 2px; padding: 8px 2px 14px"><span style="font-family: 'Yusei Magic', sans-serif; font-size: 24px">3 町中華</span><span style="font-size: 14px; color: #4E4134">2階建ての中華料理店　<span style="color: #B5362A">★★★★</span>☆</span></span>
+    <span style="position: absolute; left: 156px; top: -7px; width: 18px; height: 18px; border-radius: 50%; background: radial-gradient(circle at 35% 30%, #F2D58A 0%, #C99A2A 60%, #8E6A14 100%); box-shadow: 0 2px 3px rgba(20,10,0,0.6)"></span>
+  </a>
+  <!-- 選択中の印：赤ペンの丸 -->
+  <svg width="400" height="370" viewBox="0 0 400 370" style="position: absolute; left: 596px; top: 118px; pointer-events: none" aria-hidden="true"><path d="M60 30 C150 2 310 6 370 40 C398 90 396 270 372 330 C330 366 120 368 46 340 C10 300 6 110 28 60 C40 40 70 26 110 22" fill="none" stroke="#B5362A" stroke-width="4" stroke-linecap="round"></path></svg>
+
+  <!-- 選んだステージのメモ：テープで留めた切れ端 -->
+  <div style="position: absolute; left: 994px; top: 168px; width: 250px; transform: rotate(1.5deg); filter: drop-shadow(0 6px 8px rgba(20,10,0,{{shadow}}))">
+    <div style="box-sizing: border-box; padding: 18px 16px 22px; background-color: {{paper}}; background-image: linear-gradient(170deg, rgba(255,248,230,0.2) 0%, rgba(255,248,230,0) 40%, rgba(60,35,10,0.15) 100%); clip-path: polygon(0 0, 100% 0, 100% calc(100% - 6px), 95% 100%, 90% calc(100% - 6px), 85% 100%, 80% calc(100% - 6px), 75% 100%, 70% calc(100% - 6px), 65% 100%, 60% calc(100% - 6px), 55% 100%, 50% calc(100% - 6px), 45% 100%, 40% calc(100% - 6px), 35% 100%, 30% calc(100% - 6px), 25% 100%, 20% calc(100% - 6px), 15% 100%, 10% calc(100% - 6px), 5% 100%, 0 calc(100% - 6px)); display: flex; flex-direction: column; gap: 8px; font-size: 15px">
+      <span style="font-family: 'Yusei Magic', sans-serif; font-size: 19px">町中華のメモ</span>
+      <span style="display: flex; flex-direction: column; gap: 3px"><b style="font-size: 13px; color: #4E4134">目的</b><span>◆食料70・■縄張り10・▲恐怖100%</span><span>→ 最終防衛 100秒</span></span>
+      <span style="display: flex; flex-direction: column; gap: 3px"><b style="font-size: 13px; color: #8E3C10">危険</b><span>お玉・熱湯・お盆・スプレー・ブラシ・濡れた床・客の悲鳴・燻煙剤</span></span>
+      <span style="font-size: 13px; color: #4E4134">まだクリアしていない</span>
+    </div>
+    <span style="position: absolute; left: 88px; top: -10px; width: 74px; height: 20px; background: rgba(214,196,140,0.8); transform: rotate(-4deg); clip-path: polygon(4% 0, 0 50%, 4% 100%, 96% 100%, 100% 50%, 96% 0)"></span>
+  </div>
+
+  <!-- 下の操作 -->
+  <a href="Title.dc.html" style="position: absolute; left: 50px; top: 640px; font-family: 'Yusei Magic', sans-serif; font-size: 19px; color: #E2D6BE; text-decoration: underline; text-underline-offset: 4px; text-shadow: 0 1px 3px rgba(0,0,0,0.9)">← タイトルへ</a>
+  <span style="position: absolute; left: 200px; top: 643px; display: flex; align-items: center; gap: 6px; font-size: 14px; font-weight: 700; color: #E2D6BE; text-shadow: 0 1px 3px rgba(0,0,0,0.9)"><span style="padding: 1px 6px; border-radius: 4px; background: #D8CCB2; color: #2A211A; text-shadow: none; border-bottom: 2px solid #7C6E5C">← →</span>えらぶ</span>
+  <a href="#" style="position: absolute; left: 640px; top: 600px; height: 38px; padding: 0 22px; transform: rotate(-2deg); background: rgba(214,196,140,0.88); clip-path: polygon(3% 0, 0 50%, 3% 100%, 97% 100%, 100% 50%, 97% 0); display: flex; align-items: center; font-size: 17px; font-weight: 700; color: #2A211A; text-decoration: none">図鑑</a>
+  <a href="#" style="position: absolute; left: 740px; top: 612px; height: 38px; padding: 0 22px; transform: rotate(1.5deg); background: rgba(214,196,140,0.88); clip-path: polygon(3% 0, 0 50%, 3% 100%, 97% 100%, 100% 50%, 97% 0); display: flex; align-items: center; font-size: 17px; font-weight: 700; color: #2A211A; text-decoration: none">設定</a>
+  <span aria-disabled="true" style="position: absolute; left: 846px; top: 602px; height: 38px; padding: 0 22px; transform: rotate(-1deg); background: rgba(214,196,140,0.5); clip-path: polygon(3% 0, 0 50%, 3% 100%, 97% 100%, 100% 50%, 97% 0); display: flex; align-items: center; font-size: 15px; font-weight: 700; color: #2E241A; text-decoration: line-through">つづきから</span>
+  <a href="Briefing.dc.html" style="position: absolute; left: 1080px; top: 520px; width: 160px; height: 160px; border-radius: 50%; background-color: #9DB23A; background-image: linear-gradient(160deg, rgba(255,250,220,0.22) 0%, rgba(255,250,220,0) 45%, rgba(30,40,0,0.18) 100%); border: 5px solid #D6CBB0; box-sizing: border-box; box-shadow: 0 5px 8px rgba(20,10,0,0.5); transform: rotate(7deg); display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px; text-decoration: none; color: #1A1F06">
+    <span style="font-family: 'Dela Gothic One', sans-serif; font-size: 38px; line-height: 1">出撃</span>
+    <span style="padding: 1px 8px; border-radius: 4px; background: #1A1F06; color: #DDE6AE; font-size: 13px; font-weight: 700">Enter</span>
+  </a>
+
+  <!-- 画面全体の仕上げ：HUDと同じ光・粒子・周辺減光 -->
+  <sc-if value="{{grade}}" hint-placeholder-val="{{ true }}">
+    <div style="position: absolute; inset: 0; pointer-events: none; background: #F0D3A4; mix-blend-mode: multiply; opacity: 0.16"></div>
+    <div style="position: absolute; inset: 0; pointer-events: none; background: radial-gradient(ellipse 75% 70% at 52% 46%, rgba(20,10,0,0) 55%, rgba(20,10,0,0.42) 100%)"></div>
+    <svg width="1280" height="720" style="position: absolute; left: 0; top: 0; pointer-events: none; mix-blend-mode: overlay; opacity: 0.28" aria-hidden="true"><filter id="grain"><feTurbulence type="fractalNoise" baseFrequency="0.85" numOctaves="2" stitchTiles="stitch"></feTurbulence><feColorMatrix type="saturate" values="0"></feColorMatrix></filter><rect width="1280" height="720" filter="url(#grain)"></rect></svg>
+  </sc-if>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"paper":{"editor":"color","default":"#DCCFB4","options":["#DCCFB4","#E8DEC8","#F4EFE4"]},"shadow":{"editor":"range","default":0.55,"min":0.2,"max":0.8,"step":0.05},"grade":{"editor":"boolean","default":true},"$preview":{"width":1280,"height":720}}'>
+class Component extends DCLogic {
+  renderVals() {
+    return {
+      paper: this.props.paper ?? '#DCCFB4',
+      shadow: this.props.shadow ?? 0.55,
+      grade: this.props.grade ?? true
+    };
+  }
+}
+</script>
+</body>
+</html>
